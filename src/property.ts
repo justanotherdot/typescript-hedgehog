@@ -7,9 +7,9 @@ import { Size } from './data/size';
 import { Seed } from './data/seed';
 import { Tree } from './data/tree';
 import { Config } from './config';
-import { 
-  TestResult, 
-  TestCase, 
+import {
+  TestResult,
+  TestCase,
   TestStats,
   passResult,
   failResult,
@@ -17,7 +17,7 @@ import {
   emptyStats,
   addTest,
   addShrinks,
-  addLabel
+  addLabel,
 } from './result';
 
 /**
@@ -34,8 +34,11 @@ export class Property<T> {
    * Add a label to classify test cases.
    */
   classify(label: string, condition: (value: T) => boolean): Property<T> {
-    const labelFn = (value: T) => condition(value) ? label : null;
-    return new Property(this.generator, this.predicate, [...this.labels, labelFn]);
+    const labelFn = (value: T) => (condition(value) ? label : null);
+    return new Property(this.generator, this.predicate, [
+      ...this.labels,
+      labelFn,
+    ]);
   }
 
   /**
@@ -43,21 +46,36 @@ export class Property<T> {
    */
   collect(labelFn: (value: T) => string): Property<T> {
     const collectFn = (value: T) => labelFn(value);
-    return new Property(this.generator, this.predicate, [...this.labels, collectFn]);
+    return new Property(this.generator, this.predicate, [
+      ...this.labels,
+      collectFn,
+    ]);
   }
 
   /**
    * Run this property with the given configuration.
    */
-  run(config: Config = Config.default(), seed: Seed = Seed.random()): TestResult<T> {
-    return runProperty(this.generator, this.predicate, this.labels, config, seed);
+  run(
+    config: Config = Config.default(),
+    seed: Seed = Seed.random()
+  ): TestResult<T> {
+    return runProperty(
+      this.generator,
+      this.predicate,
+      this.labels,
+      config,
+      seed
+    );
   }
 }
 
 /**
  * Create a property from a generator and predicate.
  */
-export function forAll<T>(generator: Gen<T>, predicate: (value: T) => boolean): Property<T> {
+export function forAll<T>(
+  generator: Gen<T>,
+  predicate: (value: T) => boolean
+): Property<T> {
   return new Property(generator, predicate);
 }
 
@@ -94,7 +112,7 @@ function runProperty<T>(
       const testCase: TestCase<T> = {
         value: tree.value,
         size,
-        seed: testSeed
+        seed: testSeed,
       };
 
       // Apply labels
@@ -107,23 +125,31 @@ function runProperty<T>(
 
       // Test the predicate
       const passed = predicate(tree.value);
-      
+
       if (passed) {
         // Test passed, continue
         stats = addTest(stats);
       } else {
         // Test failed, try to shrink
-        const shrinkResult = shrinkFailure(tree, predicate, config, testCase, stats);
+        const shrinkResult = shrinkFailure(
+          tree,
+          predicate,
+          config,
+          testCase,
+          stats
+        );
         return shrinkResult;
       }
-
-    } catch (error) {
+    } catch (_error) {
       // Generation failed (e.g., filter rejected too many values)
       discardCount++;
       stats = addTest(stats, true); // Mark as discarded
-      
+
       if (discardCount >= config.discardLimit) {
-        return gaveUpResult(stats, `Too many discarded tests (${discardCount}/${config.discardLimit})`);
+        return gaveUpResult(
+          stats,
+          `Too many discarded tests (${discardCount}/${config.discardLimit})`
+        );
       }
     }
   }
@@ -144,15 +170,15 @@ function shrinkFailure<T>(
 ): TestResult<T> {
   // Find the minimal counterexample using depth-first traversal
   const shrinkResult = shrinkToMinimal(failingTree, predicate, config);
-  
+
   const finalStats = addShrinks(stats, shrinkResult.steps);
-  
+
   const counterexample: TestCase<T> = {
     value: shrinkResult.tree.value,
     size: originalFailure.size,
-    seed: originalFailure.seed
+    seed: originalFailure.seed,
   };
-  
+
   return failResult(
     finalStats,
     originalFailure,
@@ -181,39 +207,38 @@ function shrinkToMinimal<T>(
   steps: number = 0,
   path: TestCase<T>[] = []
 ): ShrinkResult<T> {
-  
   // Try each child in order (leftmost first)
   for (const child of tree.children) {
     if (steps >= config.shrinkLimit) {
       break;
     }
-    
+
     try {
       const childStillFails = !predicate(child.value);
-      
+
       if (childStillFails) {
         // This child still fails, so it's a better (smaller) counterexample
         const childTestCase: TestCase<T> = {
           value: child.value,
           size: path.length > 0 ? path[0].size : Size.of(0), // Use original size
-          seed: path.length > 0 ? path[0].seed : Seed.random() // Use original seed
+          seed: path.length > 0 ? path[0].seed : Seed.random(), // Use original seed
         };
-        
+
         const newPath = [...path, childTestCase];
-        
+
         // Recursively shrink this child to find an even smaller failure
         return shrinkToMinimal(child, predicate, config, steps + 1, newPath);
       }
-    } catch (error) {
+    } catch (_error) {
       // Child caused an error during testing, skip it
       continue;
     }
   }
-  
+
   // No child failed, so this is the minimal counterexample
   return {
     tree,
     steps,
-    path
+    path,
   };
 }

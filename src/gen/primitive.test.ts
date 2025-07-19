@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { bool, int, string, Ints, Strings } from './primitive';
+import { bool, int, string, stringOfLength, Ints, Strings } from './primitive';
 import { Range, Size } from '../data/size';
 import { Seed } from '../data/seed';
 
@@ -74,12 +74,14 @@ describe('primitive generators', () => {
       if (tree.value.length > 0) {
         expect(tree.hasShrinks()).toBe(true);
         const shrinks = tree.shrinks();
-        
+
         // Should include empty string
         expect(shrinks).toContain('');
-        
+
         // Should include shorter strings
-        const shorterShrinks = shrinks.filter(s => s.length < tree.value.length);
+        const shorterShrinks = shrinks.filter(
+          (s) => s.length < tree.value.length
+        );
         expect(shorterShrinks.length).toBeGreaterThan(0);
       }
     });
@@ -100,6 +102,29 @@ describe('primitive generators', () => {
 
       expect(tree.value).toBeGreaterThanOrEqual(10);
       expect(tree.value).toBeLessThanOrEqual(20);
+    });
+
+    test('handles extreme integer ranges at JavaScript limits', () => {
+      const maxRange = Range.uniform(
+        Number.MAX_SAFE_INTEGER - 1,
+        Number.MAX_SAFE_INTEGER
+      );
+      const minRange = Range.uniform(
+        Number.MIN_SAFE_INTEGER,
+        Number.MIN_SAFE_INTEGER + 1
+      );
+
+      const maxGen = int(maxRange);
+      const minGen = int(minRange);
+
+      const maxTree = maxGen.generate(Size.of(10), Seed.fromNumber(42));
+      const minTree = minGen.generate(Size.of(10), Seed.fromNumber(42));
+
+      expect(maxTree.value).toBeGreaterThanOrEqual(Number.MAX_SAFE_INTEGER - 1);
+      expect(maxTree.value).toBeLessThanOrEqual(Number.MAX_SAFE_INTEGER);
+
+      expect(minTree.value).toBeGreaterThanOrEqual(Number.MIN_SAFE_INTEGER);
+      expect(minTree.value).toBeLessThanOrEqual(Number.MIN_SAFE_INTEGER + 1);
     });
   });
 
@@ -124,6 +149,21 @@ describe('primitive generators', () => {
       expect(typeof tree.value).toBe('string');
       // Check all characters are alphabetic
       expect(tree.value).toMatch(/^[a-zA-Z]*$/);
+    });
+
+    test('handles string generation edge cases', () => {
+      // Empty string generation
+      const emptyStringGen = stringOfLength(0);
+      const emptyTree = emptyStringGen.generate(
+        Size.of(10),
+        Seed.fromNumber(42)
+      );
+      expect(emptyTree.value).toBe('');
+
+      // Reasonably long string for testing
+      const longStringGen = stringOfLength(100);
+      const longTree = longStringGen.generate(Size.of(10), Seed.fromNumber(42));
+      expect(longTree.value.length).toBe(100);
     });
 
     test('asciiOfLength generates exact length', () => {

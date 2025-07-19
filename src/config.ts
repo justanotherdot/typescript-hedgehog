@@ -24,28 +24,48 @@ export class Config {
    * Create a new config with the given number of tests.
    */
   withTests(tests: number): Config {
-    return new Config(tests, this.shrinkLimit, this.sizeLimit, this.discardLimit);
+    return new Config(
+      tests,
+      this.shrinkLimit,
+      this.sizeLimit,
+      this.discardLimit
+    );
   }
 
   /**
    * Create a new config with the given shrink limit.
    */
   withShrinks(shrinks: number): Config {
-    return new Config(this.testLimit, shrinks, this.sizeLimit, this.discardLimit);
+    return new Config(
+      this.testLimit,
+      shrinks,
+      this.sizeLimit,
+      this.discardLimit
+    );
   }
 
   /**
    * Create a new config with the given size limit.
    */
   withSizeLimit(size: number): Config {
-    return new Config(this.testLimit, this.shrinkLimit, size, this.discardLimit);
+    return new Config(
+      this.testLimit,
+      this.shrinkLimit,
+      size,
+      this.discardLimit
+    );
   }
 
   /**
    * Create a new config with the given discard limit.
    */
   withDiscardLimit(discards: number): Config {
-    return new Config(this.testLimit, this.shrinkLimit, this.sizeLimit, discards);
+    return new Config(
+      this.testLimit,
+      this.shrinkLimit,
+      this.sizeLimit,
+      discards
+    );
   }
 
   toString(): string {

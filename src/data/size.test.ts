@@ -36,6 +36,27 @@ describe('Size', () => {
     const golden = size.golden();
     expect(golden.get()).toBe(61); // floor(100 * 0.61803398875)
   });
+
+  test('size scaling edge cases', () => {
+    const size = Size.of(100);
+
+    // Zero scaling
+    expect(size.scale(0).get()).toBe(0);
+
+    // Very small scaling
+    expect(size.scale(0.001).get()).toBe(0); // Should floor to 0
+
+    // Very large scaling
+    const scaled = size.scale(1000000);
+    expect(scaled.get()).toBeGreaterThan(100);
+  });
+
+  test('size zero parameter', () => {
+    const zeroSize = Size.of(0);
+    expect(zeroSize.get()).toBe(0);
+    expect(zeroSize.scale(2).get()).toBe(0);
+    expect(zeroSize.golden().get()).toBe(0);
+  });
 });
 
 describe('Range', () => {
@@ -86,7 +107,7 @@ describe('Range', () => {
   test('calculates range size', () => {
     const range = Range.uniform(10, 20);
     expect(range.size()).toBe(10);
-    
+
     const pointRange = Range.constant(42);
     expect(pointRange.size()).toBe(0);
   });
@@ -140,5 +161,34 @@ describe('Ranges', () => {
     expect(range.max).toBe(3.0);
     expect(range.origin).toBe(0);
     expect(range.distribution).toBe(Distribution.Uniform);
+  });
+
+  test('extreme ranges at JavaScript limits', () => {
+    const maxRange = Range.uniform(
+      Number.MAX_SAFE_INTEGER - 1,
+      Number.MAX_SAFE_INTEGER
+    );
+    const minRange = Range.uniform(
+      Number.MIN_SAFE_INTEGER,
+      Number.MIN_SAFE_INTEGER + 1
+    );
+
+    expect(maxRange.min).toBe(Number.MAX_SAFE_INTEGER - 1);
+    expect(maxRange.max).toBe(Number.MAX_SAFE_INTEGER);
+    expect(minRange.min).toBe(Number.MIN_SAFE_INTEGER);
+    expect(minRange.max).toBe(Number.MIN_SAFE_INTEGER + 1);
+
+    // Size calculations should work
+    expect(maxRange.size()).toBe(1);
+    expect(minRange.size()).toBe(1);
+  });
+
+  test('single-value range edge case', () => {
+    const pointRange = Range.uniform(42, 42);
+    expect(pointRange.min).toBe(42);
+    expect(pointRange.max).toBe(42);
+    expect(pointRange.size()).toBe(0);
+    expect(pointRange.contains(42)).toBe(true);
+    expect(pointRange.contains(41)).toBe(false);
   });
 });
