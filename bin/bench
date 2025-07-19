@@ -1,0 +1,5 @@
+#!/bin/sh -eu
+
+# Performance benchmarks for Hedgehog implementations
+
+npx vitest run src/seed/performance.test.ts --reporter=verbose

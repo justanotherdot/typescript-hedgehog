@@ -6,8 +6,8 @@
  */
 export class Seed {
   constructor(
-    private readonly state: bigint,
-    private readonly gamma: bigint
+    public readonly state: bigint,
+    public readonly gamma: bigint
   ) {}
 
   /**
@@ -34,7 +34,7 @@ export class Seed {
    * Uses SplitMix64 splitting strategy for independence.
    */
   split(): [Seed, Seed] {
-    const newState = this.state + this.gamma;
+    const newState = addU64(this.state, this.gamma);
     const output = splitmix64Mix(newState);
     const newGamma = mixGamma(output);
 
@@ -46,7 +46,7 @@ export class Seed {
    * Uses SplitMix64 algorithm for high-quality randomness.
    */
   nextUint32(): [number, Seed] {
-    const newState = this.state + this.gamma;
+    const newState = addU64(this.state, this.gamma);
     const output = splitmix64Mix(newState);
     // Take upper 32 bits for better quality
     const value = Number((output >> 32n) & 0xffffffffn);
@@ -65,8 +65,9 @@ export class Seed {
    * Generate a random boolean.
    */
   nextBool(): [boolean, Seed] {
-    const [value, newSeed] = this.nextUint32();
-    return [(value & 1) === 1, newSeed];
+    const newState = addU64(this.state, this.gamma);
+    const output = splitmix64Mix(newState);
+    return [(output & 1n) === 1n, new Seed(newState, this.gamma)];
   }
 
   /**
@@ -82,14 +83,34 @@ export class Seed {
   }
 }
 
+// 64-bit unsigned integer arithmetic with proper wrapping
+const MAX_U64 = 1n << 64n; // 2^64
+
+function wrapU64(n: bigint): bigint {
+  if (n >= MAX_U64) {
+    return n % MAX_U64; // Wrap on overflow
+  } else if (n < 0n) {
+    return MAX_U64 + (n % MAX_U64); // Handle negative wrapping
+  }
+  return n;
+}
+
+function addU64(a: bigint, b: bigint): bigint {
+  return wrapU64(a + b);
+}
+
+function mulU64(a: bigint, b: bigint): bigint {
+  return wrapU64(a * b);
+}
+
 /**
- * SplitMix64 mixing function for high-quality output.
+ * SplitMix64 mixing function with proper 64-bit wrapping arithmetic.
  * Uses the exact constants and operations from the reference implementation.
  */
 function splitmix64Mix(z: bigint): bigint {
-  z = z + 0x9e3779b97f4a7c15n;
-  z = (z ^ (z >> 30n)) * 0xbf58476d1ce4e5b9n;
-  z = (z ^ (z >> 27n)) * 0x94d049bb133111ebn;
+  z = addU64(z, 0x9e3779b97f4a7c15n);
+  z = mulU64(z ^ (z >> 30n), 0xbf58476d1ce4e5b9n);
+  z = mulU64(z ^ (z >> 27n), 0x94d049bb133111ebn);
   return z ^ (z >> 31n);
 }
 
@@ -100,5 +121,5 @@ function splitmix64Mix(z: bigint): bigint {
 function mixGamma(z: bigint): bigint {
   z = splitmix64Mix(z);
   // Ensure gamma is odd for maximal period
-  return (z | 1n) * 0x9e3779b97f4a7c15n;
+  return mulU64(z | 1n, 0x9e3779b97f4a7c15n);
 }
