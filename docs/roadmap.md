@@ -140,3 +140,4 @@ type Seed = [number, number] // SplitMix64 state
 - Property-based mutation testing
 - Integration with fuzzing tools
 - Machine learning guided generation
+- Generating property-based tests from Zod schemas

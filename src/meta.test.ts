@@ -40,8 +40,11 @@ describe('Meta Properties', () => {
 
   test('list generator produces arrays with correct element types', () => {
     const listGen = Gen.list(int(Range.uniform(1, 10)));
-    const prop = forAll(listGen, (arr) => 
-      Array.isArray(arr) && arr.every(x => typeof x === 'number' && x >= 1 && x <= 10)
+    const prop = forAll(
+      listGen,
+      (arr) =>
+        Array.isArray(arr) &&
+        arr.every((x) => typeof x === 'number' && x >= 1 && x <= 10)
     );
     const result = prop.run();
     expect(result.type).toBe('pass');
@@ -57,14 +60,14 @@ describe('Meta Properties', () => {
 
   test('mapped generators preserve relationships', () => {
     const baseGen = int(Range.uniform(0, 100));
-    const doubledGen = baseGen.map(n => n * 2);
+    const doubledGen = baseGen.map((n) => n * 2);
     const prop = forAll(doubledGen, (n) => n % 2 === 0);
     const result = prop.run();
     expect(result.type).toBe('pass');
   });
 
   test('filtered generators satisfy predicate', () => {
-    const evenGen = int(Range.uniform(0, 100)).filter(n => n % 2 === 0);
+    const evenGen = int(Range.uniform(0, 100)).filter((n) => n % 2 === 0);
     const prop = forAll(evenGen, (n) => n % 2 === 0);
     const result = prop.run();
     expect(result.type).toBe('pass');
@@ -72,9 +75,11 @@ describe('Meta Properties', () => {
 
   test('bound generators maintain composition', () => {
     const baseGen = int(Range.uniform(1, 10));
-    const listGen = baseGen.bind(n => Gen.listOfLength(Gen.constant('x'), n));
-    const prop = forAll(listGen, (arr) => 
-      arr.length >= 1 && arr.length <= 10 && arr.every(x => x === 'x')
+    const listGen = baseGen.bind((n) => Gen.listOfLength(Gen.constant('x'), n));
+    const prop = forAll(
+      listGen,
+      (arr) =>
+        arr.length >= 1 && arr.length <= 10 && arr.every((x) => x === 'x')
     );
     const result = prop.run();
     expect(result.type).toBe('pass');
@@ -84,7 +89,7 @@ describe('Meta Properties', () => {
     // This property should fail and find a minimal counterexample
     const prop = forAll(int(Range.uniform(1, 100)), (n) => n < 50);
     const result = prop.run();
-    
+
     expect(result.type).toBe('fail');
     if (result.type === 'fail') {
       // Should find minimal counterexample (50)
@@ -99,7 +104,7 @@ describe('Meta Properties', () => {
     // Property that fails for strings longer than 5 characters
     const prop = forAll(string(), (s) => s.length <= 5);
     const result = prop.run(Config.default().withTests(1000));
-    
+
     if (result.type === 'fail') {
       // Should shrink to minimal failing string (6 characters)
       expect(result.counterexample.value.length).toBe(6);
@@ -112,7 +117,7 @@ describe('Meta Properties', () => {
     const listGen = Gen.list(int(Range.uniform(1, 10)));
     const prop = forAll(listGen, (arr) => arr.length <= 3);
     const result = prop.run(Config.default().withTests(1000));
-    
+
     if (result.type === 'fail') {
       // Should shrink to list of exactly 4 elements
       expect(result.counterexample.value.length).toBe(4);
@@ -123,8 +128,11 @@ describe('Meta Properties', () => {
   test('frequency distribution approximates weights', () => {
     const heavyChoice = Gen.constant('heavy');
     const lightChoice = Gen.constant('light');
-    const weightedGen = Gen.frequency([[80, heavyChoice], [20, lightChoice]]);
-    
+    const weightedGen = Gen.frequency([
+      [80, heavyChoice],
+      [20, lightChoice],
+    ]);
+
     // Run many tests to check distribution
     const results: string[] = [];
     for (let i = 0; i < 1000; i++) {
@@ -134,10 +142,10 @@ describe('Meta Properties', () => {
       });
       prop.run(Config.default().withTests(1));
     }
-    
-    const heavyCount = results.filter(r => r === 'heavy').length;
-    const lightCount = results.filter(r => r === 'light').length;
-    
+
+    const heavyCount = results.filter((r) => r === 'heavy').length;
+    const lightCount = results.filter((r) => r === 'light').length;
+
     // Heavy should be approximately 4x more common than light (80/20 = 4)
     const ratio = heavyCount / lightCount;
     expect(ratio).toBeGreaterThan(2); // Allow some variance
@@ -145,13 +153,15 @@ describe('Meta Properties', () => {
   });
 
   test('sized generators scale with size parameter', () => {
-    const sizedListGen = Gen.sized(size => Gen.listOfLength(Gen.constant(1), size.get()));
-    
+    const sizedListGen = Gen.sized((size) =>
+      Gen.listOfLength(Gen.constant(1), size.get())
+    );
+
     // Test with different size values
     const smallProp = forAll(sizedListGen, (arr) => arr.length <= 10);
     const smallResult = smallProp.run(Config.default().withSizeLimit(10));
     expect(smallResult.type).toBe('pass');
-    
+
     const largeProp = forAll(sizedListGen, (arr) => arr.length <= 50);
     const largeResult = largeProp.run(Config.default().withSizeLimit(50));
     expect(largeResult.type).toBe('pass');
@@ -160,11 +170,11 @@ describe('Meta Properties', () => {
   test('deterministic generation with same seed', () => {
     const gen = Gen.oneOf([Gen.constant(1), Gen.constant(2), Gen.constant(3)]);
     const prop = forAll(gen, () => true);
-    
+
     const seed = Seed.fromNumber(42);
     const result1 = prop.run(Config.default(), seed);
     const result2 = prop.run(Config.default(), seed);
-    
+
     expect(result1.type).toBe('pass');
     expect(result2.type).toBe('pass');
     // Results should be identical for same seed

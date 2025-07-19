@@ -12,7 +12,7 @@ import { Seed } from '../data/seed';
  */
 export function bool(): Gen<boolean> {
   return Gen.create((_size, seed) => {
-    const [value, _newSeed] = seed.nextBool();
+    const [value] = seed.nextBool();
     const children = [Tree.singleton(!value)]; // Shrink to opposite
     return Tree.withChildren(value, children);
   });
@@ -24,7 +24,7 @@ export function bool(): Gen<boolean> {
 export function int(range: Range<number>): Gen<number> {
   return Gen.create((_size, seed) => {
     const rangeSize = Math.max(1, range.max - range.min + 1);
-    const [offset, _newSeed] = seed.nextBounded(rangeSize);
+    const [offset] = seed.nextBounded(rangeSize);
     const value = range.min + offset;
 
     // Generate shrinks towards origin (or zero if no origin specified)
@@ -200,7 +200,8 @@ export const Ints = {
     ),
 
   /** Integers in a specific range */
-  range: (min: number, max: number) => int(Range.uniform(min, max).withOrigin(0)),
+  range: (min: number, max: number) =>
+    int(Range.uniform(min, max).withOrigin(0)),
 } as const;
 
 /**

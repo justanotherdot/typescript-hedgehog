@@ -1,6 +1,6 @@
 /**
  * Proper 64-bit SplitMix64 implementation using BigInt.
- * 
+ *
  * This provides high-quality splittable random number generation
  * with full 64-bit precision, matching the reference implementations.
  */
@@ -24,7 +24,8 @@ export class Seed {
    * Create a random seed using current time.
    */
   static random(): Seed {
-    const now = BigInt(Date.now()) * BigInt(Math.floor(Math.random() * 0x100000000));
+    const now =
+      BigInt(Date.now()) * BigInt(Math.floor(Math.random() * 0x100000000));
     return Seed.fromNumber(Number(now & 0xffffffffn));
   }
 

@@ -24,7 +24,7 @@
     "test": "bin/test",
     "test:watch": "vitest",
     "lint": "bin/lint",
-    "lint:fix": "bin/lint-fix",
+    "lint:fix": "bin/lint:fix",
     "typecheck": "bin/typecheck"
   },
   "keywords": [
@@ -37,8 +37,8 @@
   "author": "Ryan James Spencer <spencer.ryanjames@gmail.com>",
   "license": "BSD-3-Clause",
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^8.0.0",
     "eslint-plugin-import": "^2.29.0",
     "prettier": "^3.0.0",

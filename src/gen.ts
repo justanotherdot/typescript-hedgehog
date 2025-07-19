@@ -10,7 +10,9 @@ import { Tree } from './data/tree';
  * type-directed approaches like QuickCheck.
  */
 export class Gen<T> {
-  constructor(private readonly generator: (size: Size, seed: Seed) => Tree<T>) {}
+  constructor(
+    private readonly generator: (size: Size, seed: Seed) => Tree<T>
+  ) {}
 
   /**
    * Create a new generator from a function.
@@ -65,7 +67,9 @@ export class Gen<T> {
         attempts++;
       }
 
-      throw new Error(`Failed to generate value satisfying predicate after ${maxAttempts} attempts`);
+      throw new Error(
+        `Failed to generate value satisfying predicate after ${maxAttempts} attempts`
+      );
     });
   }
 
@@ -75,7 +79,7 @@ export class Gen<T> {
   bind<U>(f: (value: T) => Gen<U>): Gen<U> {
     return new Gen((size, seed) => {
       const tree = this.generate(size, seed);
-      return tree.bind(value => f(value).generate(size, seed));
+      return tree.bind((value) => f(value).generate(size, seed));
     });
   }
 
@@ -146,7 +150,7 @@ export class Gen<T> {
    * Create a generator that produces lists of values.
    */
   static list<T>(elementGen: Gen<T>): Gen<T[]> {
-    return Gen.sized(size => {
+    return Gen.sized((size) => {
       const maxLength = size.get();
       return new Gen((_, seed) => {
         const [length, newSeed] = seed.nextBounded(maxLength + 1);
@@ -172,7 +176,11 @@ export class Gen<T> {
 
         if (tree.hasShrinks()) {
           for (const shrink of tree.shrinks()) {
-            const shrunkList = [...elements.slice(0, i), shrink, ...elements.slice(i + 1)];
+            const shrunkList = [
+              ...elements.slice(0, i),
+              shrink,
+              ...elements.slice(i + 1),
+            ];
             shrinks.push(Tree.singleton(shrunkList));
           }
         }

@@ -34,15 +34,12 @@ export interface TestStats {
 /**
  * The result of running a property test.
  */
-export type TestResult<T> = 
-  | PassResult<T>
-  | FailResult<T> 
-  | GaveUpResult<T>;
+export type TestResult<T> = PassResult | FailResult<T> | GaveUpResult;
 
 /**
  * The property passed all tests.
  */
-export interface PassResult<_T> {
+export interface PassResult {
   readonly type: 'pass';
   readonly stats: TestStats;
 }
@@ -64,7 +61,7 @@ export interface FailResult<T> {
 /**
  * The property gave up due to too many discarded tests.
  */
-export interface GaveUpResult<_T> {
+export interface GaveUpResult {
   readonly type: 'gave-up';
   readonly stats: TestStats;
   /** The reason for giving up. */
@@ -74,7 +71,7 @@ export interface GaveUpResult<_T> {
 /**
  * Create a successful test result.
  */
-export function passResult<T = unknown>(stats: TestStats): PassResult<T> {
+export function passResult(stats: TestStats): PassResult {
   return { type: 'pass', stats };
 }
 
@@ -92,14 +89,14 @@ export function failResult<T>(
     stats,
     originalFailure,
     counterexample,
-    shrinkPath
+    shrinkPath,
   };
 }
 
 /**
  * Create a gave-up test result.
  */
-export function gaveUpResult<T = unknown>(stats: TestStats, reason: string): GaveUpResult<T> {
+export function gaveUpResult(stats: TestStats, reason: string): GaveUpResult {
   return { type: 'gave-up', stats, reason };
 }
 
@@ -111,19 +108,22 @@ export function emptyStats(): TestStats {
     testsRun: 0,
     testsDiscarded: 0,
     shrinkSteps: 0,
-    labels: new Map()
+    labels: new Map(),
   };
 }
 
 /**
  * Update test statistics with a new test.
  */
-export function addTest(stats: TestStats, discarded: boolean = false): TestStats {
+export function addTest(
+  stats: TestStats,
+  discarded: boolean = false
+): TestStats {
   return {
     testsRun: discarded ? stats.testsRun : stats.testsRun + 1,
     testsDiscarded: discarded ? stats.testsDiscarded + 1 : stats.testsDiscarded,
     shrinkSteps: stats.shrinkSteps,
-    labels: stats.labels
+    labels: stats.labels,
   };
 }
 
@@ -135,7 +135,7 @@ export function addShrinks(stats: TestStats, steps: number): TestStats {
     testsRun: stats.testsRun,
     testsDiscarded: stats.testsDiscarded,
     shrinkSteps: stats.shrinkSteps + steps,
-    labels: stats.labels
+    labels: stats.labels,
   };
 }
 
@@ -145,11 +145,11 @@ export function addShrinks(stats: TestStats, steps: number): TestStats {
 export function addLabel(stats: TestStats, label: string): TestStats {
   const newLabels = new Map(stats.labels);
   newLabels.set(label, (newLabels.get(label) || 0) + 1);
-  
+
   return {
     testsRun: stats.testsRun,
     testsDiscarded: stats.testsDiscarded,
     shrinkSteps: stats.shrinkSteps,
-    labels: newLabels
+    labels: newLabels,
   };
 }
