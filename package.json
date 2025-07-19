@@ -1,0 +1,52 @@
+{
+  "name": "hedgehog",
+  "version": "0.1.0",
+  "description": "Property-based testing library for TypeScript, inspired by Hedgehog",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./seed/bigint": {
+      "types": "./dist/seed/bigint.d.ts", 
+      "default": "./dist/seed/bigint.js"
+    },
+    "./seed/wasm": {
+      "types": "./dist/seed/wasm.d.ts",
+      "default": "./dist/seed/wasm.js"
+    }
+  },
+  "scripts": {
+    "build": "bin/build",
+    "test": "bin/test",
+    "test:watch": "vitest",
+    "lint": "bin/lint",
+    "lint:fix": "bin/lint-fix",
+    "typecheck": "bin/typecheck"
+  },
+  "keywords": [
+    "property-based-testing",
+    "testing",
+    "hedgehog",
+    "typescript",
+    "generators"
+  ],
+  "author": "Ryan James Spencer <spencer.ryanjames@gmail.com>",
+  "license": "BSD-3-Clause",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}

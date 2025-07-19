@@ -1,0 +1,4 @@
+#!/bin/sh -eu
+
+prettier --check "src/**/*.ts"
+eslint src --ext .ts
