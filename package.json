@@ -11,7 +11,7 @@
       "default": "./dist/index.js"
     },
     "./seed/bigint": {
-      "types": "./dist/seed/bigint.d.ts", 
+      "types": "./dist/seed/bigint.d.ts",
       "default": "./dist/seed/bigint.js"
     },
     "./seed/wasm": {
@@ -21,6 +21,7 @@
   },
   "scripts": {
     "build": "bin/build",
+    "build:wasm": "bin/build-wasm",
     "test": "bin/test",
     "test:watch": "vitest",
     "lint": "bin/lint",
@@ -43,6 +44,7 @@
     "eslint-plugin-import": "^2.29.0",
     "prettier": "^3.0.0",
     "typescript": "^5.0.0",
+    "vite-plugin-wasm": "^3.5.0",
     "vitest": "^1.0.0"
   },
   "files": [

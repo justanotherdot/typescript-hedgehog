@@ -1,0 +1,11 @@
+#!/bin/sh -eu
+
+# Requires wasm-pack: https://rustwasm.github.io/wasm-pack/installer/
+
+if ! command -v wasm-pack >/dev/null 2>&1; then
+    echo "ERROR: wasm-pack required" >&2
+    exit 1
+fi
+
+cd hedgehog-splitmix-wasm
+wasm-pack build --target bundler --out-dir pkg

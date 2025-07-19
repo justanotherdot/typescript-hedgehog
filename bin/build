@@ -2,4 +2,4 @@
 
 rm -rf dist
 bin/typecheck
-tsc
+npx tsc

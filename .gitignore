@@ -39,3 +39,8 @@ pids
 # Temporary files
 *.tmp
 *.temp
+
+# Rust/WASM build artifacts
+hedgehog-splitmix-wasm/target/
+hedgehog-splitmix-wasm/pkg/
+hedgehog-splitmix-wasm/Cargo.lock
