@@ -1,10 +1,12 @@
+import { Seed as SeedInterface } from './interface.js';
+
 /**
  * Proper 64-bit SplitMix64 implementation using BigInt.
  *
  * This provides high-quality splittable random number generation
  * with full 64-bit precision, matching the reference implementations.
  */
-export class Seed {
+export class Seed implements SeedInterface {
   constructor(
     public readonly state: bigint,
     public readonly gamma: bigint
@@ -17,6 +19,10 @@ export class Seed {
     const bigValue = BigInt(Math.floor(value));
     const state = splitmix64Mix(bigValue);
     const gamma = mixGamma(state);
+    return new Seed(state, gamma);
+  }
+
+  static fromParts(state: bigint, gamma: bigint): Seed {
     return new Seed(state, gamma);
   }
 
@@ -80,6 +86,10 @@ export class Seed {
 
   toString(): string {
     return `Seed(${this.state}, ${this.gamma})`;
+  }
+
+  getImplementation(): string {
+    return 'bigint';
   }
 }
 

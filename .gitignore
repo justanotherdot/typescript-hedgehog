@@ -44,3 +44,7 @@ pids
 hedgehog-splitmix-wasm/target/
 hedgehog-splitmix-wasm/pkg/
 hedgehog-splitmix-wasm/Cargo.lock
+
+# Performance profiling artifacts
+*.cpuprofile
+*.heapprofile

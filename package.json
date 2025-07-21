@@ -17,6 +17,10 @@
     "./seed/wasm": {
       "types": "./dist/seed/wasm.d.ts",
       "default": "./dist/seed/wasm.js"
+    },
+    "./seed/adaptive": {
+      "types": "./dist/seed/adaptive.d.ts",
+      "default": "./dist/seed/adaptive.js"
     }
   },
   "scripts": {

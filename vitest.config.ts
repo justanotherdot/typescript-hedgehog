@@ -6,6 +6,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    include: ['**/*.{test,spec,bench}.?(c|m)[jt]s?(x)'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
@@ -15,6 +16,7 @@ export default defineConfig({
         '**/*.d.ts',
         '**/*.test.ts',
         '**/*.spec.ts',
+        '**/*.bench.ts',
       ],
     },
   },

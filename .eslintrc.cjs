@@ -27,5 +27,5 @@ module.exports = {
     'no-console': 'warn',
     'no-debugger': 'error',
   },
-  ignorePatterns: ['dist/', 'coverage/', 'node_modules/', '*.js'],
+  ignorePatterns: ['dist/', 'coverage/', 'node_modules/', '*.js', '**/*.bench.ts'],
 };

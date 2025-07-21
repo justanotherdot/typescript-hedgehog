@@ -112,6 +112,28 @@ impl Seed {
             right: right_seed,
         }
     }
+
+    /// Generate multiple booleans in a single call (batched for performance)
+    #[wasm_bindgen]
+    pub fn next_bools_batch(&self, count: u32) -> BatchBoolResult {
+        let mut results = Vec::with_capacity(count as usize);
+        let mut current_state = self.state;
+        let gamma = self.gamma;
+        
+        for _ in 0..count {
+            current_state = current_state.wrapping_add(gamma);
+            let output = splitmix64_mix(current_state);
+            results.push(if output & 1 == 1 { 1 } else { 0 });
+        }
+        
+        BatchBoolResult {
+            values: results,
+            final_seed: Seed {
+                state: current_state,
+                gamma: gamma,
+            },
+        }
+    }
 }
 
 /// Return type for operations that produce a seed and u64 value
@@ -167,6 +189,13 @@ pub struct SeedPair {
     right: Seed,
 }
 
+/// Return type for batch boolean operations
+#[wasm_bindgen]
+pub struct BatchBoolResult {
+    values: Vec<u8>,
+    final_seed: Seed,
+}
+
 #[wasm_bindgen]
 impl SeedPair {
     #[wasm_bindgen(getter)]
@@ -182,6 +211,22 @@ impl SeedPair {
         Seed {
             state: self.right.state,
             gamma: self.right.gamma,
+        }
+    }
+}
+
+#[wasm_bindgen]
+impl BatchBoolResult {
+    #[wasm_bindgen(getter)]
+    pub fn values(&self) -> Vec<u8> {
+        self.values.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn final_seed(&self) -> Seed {
+        Seed {
+            state: self.final_seed.state,
+            gamma: self.final_seed.gamma,
         }
     }
 }
