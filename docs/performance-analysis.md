@@ -20,12 +20,15 @@
 - Warmup iterations: 1,000
 - Date: 2025-07-19
 
-## SplitMix64 implementation comparison
+## SplitMix64 implementation architecture
 
-This document summarizes the performance characteristics of the two SplitMix64 implementations available in the library:
+This library provides a **performance-adaptive architecture** with three SplitMix64 implementations:
 
+- **AdaptiveSeed** (`hedgehog`): Default implementation that automatically optimizes between WASM and BigInt
 - **BigInt implementation** (`hedgehog/seed/bigint`): Pure TypeScript using BigInt arithmetic
 - **WASM implementation** (`hedgehog/seed/wasm`): Rust-compiled WebAssembly for performance
+
+The **AdaptiveSeed is the recommended implementation** and is used by default throughout the library. It transparently selects the optimal approach based on operation patterns and provides automatic batching for bulk operations.
 
 ## Benchmark results
 

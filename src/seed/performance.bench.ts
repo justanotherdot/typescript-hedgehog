@@ -2,7 +2,9 @@ import { describe, test } from 'vitest';
 import * as BigIntSeed from './bigint.js';
 import * as WasmSeed from './wasm.js';
 
-describe('SplitMix64 performance comparison', () => {
+const runBenchmarks = process.env.RUN_BENCHMARKS === 'true';
+
+describe.skipIf(!runBenchmarks)('SplitMix64 performance comparison', () => {
   const ITERATIONS = 100_000;
   const WARMUP_ITERATIONS = 1_000;
 
