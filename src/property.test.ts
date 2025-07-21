@@ -45,9 +45,9 @@ describe('Property testing', () => {
   });
 
   test('reverse property', () => {
-    // Property: reverse(reverse(list)) === list
-    const listGen = Gen.list(Ints.small());
-    const prop = forAll(listGen, (xs) => {
+    // Property: reverse(reverse(array)) === array
+    const arrayGen = Gen.array(Ints.small());
+    const prop = forAll(arrayGen, (xs) => {
       const reversed = [...xs].reverse();
       const doubleReversed = [...reversed].reverse();
       return JSON.stringify(xs) === JSON.stringify(doubleReversed);
@@ -61,9 +61,9 @@ describe('Property testing', () => {
   });
 
   test('sort property', () => {
-    // Property: sorted list has same length and is actually sorted
-    const listGen = Gen.list(Ints.range(1, 100));
-    const prop = forAll(listGen, (xs) => {
+    // Property: sorted array has same length and is actually sorted
+    const arrayGen = Gen.array(Ints.range(1, 100));
+    const prop = forAll(arrayGen, (xs) => {
       const sorted = [...xs].sort((a, b) => a - b);
 
       // Same length

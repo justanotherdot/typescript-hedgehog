@@ -1,6 +1,16 @@
 import { Seed } from './data/seed';
 import { Size } from './data/size';
 import { Tree } from './data/tree';
+import {
+  array,
+  arrayOfLength,
+  object,
+  tuple,
+  ArrayOptions,
+} from './gen/collection.js';
+
+// Re-export collection generators
+export { array, arrayOfLength, object, tuple, ArrayOptions };
 
 /**
  * A generator for test data of type `T`.
@@ -147,54 +157,34 @@ export class Gen<T> {
   }
 
   /**
-   * Create a generator that produces lists of values.
+   * Generate arrays with configurable length and element shrinking.
    */
-  static list<T>(elementGen: Gen<T>): Gen<T[]> {
-    return Gen.sized((size) => {
-      const maxLength = size.get();
-      return new Gen((_, seed) => {
-        const [length, newSeed] = seed.nextBounded(maxLength + 1);
-        return Gen.listOfLength(elementGen, length).generate(size, newSeed);
-      });
-    });
+  static array<T>(elementGen: Gen<T>, options?: ArrayOptions): Gen<T[]> {
+    return array(elementGen, options);
   }
 
   /**
-   * Create a generator that produces lists of a specific length.
+   * Generate arrays of exactly the specified length.
    */
-  static listOfLength<T>(elementGen: Gen<T>, length: number): Gen<T[]> {
-    return new Gen((size, seed) => {
-      const elements: T[] = [];
-      const shrinks: Tree<T[]>[] = [];
-      let currentSeed = seed;
+  static arrayOfLength<T>(elementGen: Gen<T>, length: number): Gen<T[]> {
+    return arrayOfLength(elementGen, length);
+  }
 
-      for (let i = 0; i < length; i++) {
-        const [seed1, seed2] = currentSeed.split();
-        const tree = elementGen.generate(size, seed1);
-        elements.push(tree.value);
-        currentSeed = seed2;
+  /**
+   * Generate objects with typed properties.
+   */
+  static object<T extends Record<string, any>>(schema: {
+    [K in keyof T]: Gen<T[K]>;
+  }): Gen<T> {
+    return object(schema);
+  }
 
-        if (tree.hasShrinks()) {
-          for (const shrink of tree.shrinks()) {
-            const shrunkList = [
-              ...elements.slice(0, i),
-              shrink,
-              ...elements.slice(i + 1),
-            ];
-            shrinks.push(Tree.singleton(shrunkList));
-          }
-        }
-      }
-
-      if (length > 0) {
-        const smallerLists = Array.from({ length }, (_, i) => {
-          const shorterList = elements.slice(0, i);
-          return Tree.singleton(shorterList);
-        });
-        shrinks.push(...smallerLists);
-      }
-
-      return Tree.withChildren(elements, shrinks);
-    });
+  /**
+   * Generate fixed-length heterogeneous tuples.
+   */
+  static tuple<T extends readonly unknown[]>(
+    ...generators: { [K in keyof T]: Gen<T[K]> }
+  ): Gen<T> {
+    return tuple<T>(...generators);
   }
 }

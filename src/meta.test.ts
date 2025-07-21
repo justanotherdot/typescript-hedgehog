@@ -38,10 +38,10 @@ describe('Meta Properties', () => {
     expect(result.type).toBe('pass');
   });
 
-  test('list generator produces arrays with correct element types', () => {
-    const listGen = Gen.list(int(Range.uniform(1, 10)));
+  test('array generator produces arrays with correct element types', () => {
+    const arrayGen = Gen.array(int(Range.uniform(1, 10)));
     const prop = forAll(
-      listGen,
+      arrayGen,
       (arr) =>
         Array.isArray(arr) &&
         arr.every((x) => typeof x === 'number' && x >= 1 && x <= 10)
@@ -75,9 +75,11 @@ describe('Meta Properties', () => {
 
   test('bound generators maintain composition', () => {
     const baseGen = int(Range.uniform(1, 10));
-    const listGen = baseGen.bind((n) => Gen.listOfLength(Gen.constant('x'), n));
+    const arrayGen = baseGen.bind((n) =>
+      Gen.arrayOfLength(Gen.constant('x'), n)
+    );
     const prop = forAll(
-      listGen,
+      arrayGen,
       (arr) =>
         arr.length >= 1 && arr.length <= 10 && arr.every((x) => x === 'x')
     );
@@ -114,8 +116,8 @@ describe('Meta Properties', () => {
 
   test('list shrinking finds minimal failing case', () => {
     // Property that fails for lists with more than 3 elements
-    const listGen = Gen.list(int(Range.uniform(1, 10)));
-    const prop = forAll(listGen, (arr) => arr.length <= 3);
+    const arrayGen = Gen.array(int(Range.uniform(1, 10)));
+    const prop = forAll(arrayGen, (arr) => arr.length <= 3);
     const result = prop.run(Config.default().withTests(1000));
 
     if (result.type === 'fail') {
@@ -153,16 +155,16 @@ describe('Meta Properties', () => {
   });
 
   test('sized generators scale with size parameter', () => {
-    const sizedListGen = Gen.sized((size) =>
-      Gen.listOfLength(Gen.constant(1), size.get())
+    const sizedArrayGen = Gen.sized((size) =>
+      Gen.arrayOfLength(Gen.constant(1), size.get())
     );
 
     // Test with different size values
-    const smallProp = forAll(sizedListGen, (arr) => arr.length <= 10);
+    const smallProp = forAll(sizedArrayGen, (arr) => arr.length <= 10);
     const smallResult = smallProp.run(Config.default().withSizeLimit(10));
     expect(smallResult.type).toBe('pass');
 
-    const largeProp = forAll(sizedListGen, (arr) => arr.length <= 50);
+    const largeProp = forAll(sizedArrayGen, (arr) => arr.length <= 50);
     const largeResult = largeProp.run(Config.default().withSizeLimit(50));
     expect(largeResult.type).toBe('pass');
   });
