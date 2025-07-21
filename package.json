@@ -41,6 +41,9 @@
   ],
   "author": "Ryan James Spencer <spencer.ryanjames@gmail.com>",
   "license": "BSD-3-Clause",
+  "engines": {
+    "node": ">=20.16.0"
+  },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
