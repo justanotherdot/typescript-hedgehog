@@ -91,7 +91,7 @@ export function arrayOfLength<T>(elementGen: Gen<T>, length: number): Gen<T[]> {
 /**
  * Generate objects with typed properties.
  */
-export function object<T extends Record<string, any>>(schema: {
+export function object<T extends Record<string, unknown>>(schema: {
   [K in keyof T]: Gen<T[K]>;
 }): Gen<T> {
   return Gen.create((size, seed) => {
@@ -101,7 +101,7 @@ export function object<T extends Record<string, any>>(schema: {
     }
 
     const values: Partial<T> = {};
-    const valueTrees: Record<keyof T, Tree<T[keyof T]>> = {} as any;
+    const valueTrees = {} as Record<keyof T, Tree<T[keyof T]>>;
     let currentSeed = seed;
 
     // Generate all property values

@@ -8,9 +8,19 @@ import {
   tuple,
   ArrayOptions,
 } from './gen/collection.js';
+import {
+  optional,
+  nullable,
+  union,
+  discriminatedUnion,
+  weightedUnion,
+} from './gen/union.js';
 
 // Re-export collection generators
 export { array, arrayOfLength, object, tuple, ArrayOptions };
+
+// Re-export union generators
+export { optional, nullable, union, discriminatedUnion, weightedUnion };
 
 /**
  * A generator for test data of type `T`.
@@ -41,7 +51,9 @@ export class Gen<T> {
   /**
    * Create a generator that always produces the same value.
    */
-  static constant<T>(value: T): Gen<T> {
+  static constant<T extends string | number | boolean | symbol>(
+    value: T
+  ): Gen<T> {
     return new Gen(() => Tree.singleton(value));
   }
 
@@ -173,7 +185,7 @@ export class Gen<T> {
   /**
    * Generate objects with typed properties.
    */
-  static object<T extends Record<string, any>>(schema: {
+  static object<T extends Record<string, unknown>>(schema: {
     [K in keyof T]: Gen<T[K]>;
   }): Gen<T> {
     return object(schema);
@@ -186,5 +198,49 @@ export class Gen<T> {
     ...generators: { [K in keyof T]: Gen<T[K]> }
   ): Gen<T> {
     return tuple<T>(...generators);
+  }
+
+  /**
+   * Generate optional values (T | undefined).
+   */
+  static optional<T>(gen: Gen<T>): Gen<T | undefined> {
+    return optional(gen);
+  }
+
+  /**
+   * Generate nullable values (T | null).
+   */
+  static nullable<T>(gen: Gen<T>): Gen<T | null> {
+    return nullable(gen);
+  }
+
+  /**
+   * Generate union types from multiple generators.
+   */
+  static union<T extends readonly unknown[]>(
+    ...generators: { [K in keyof T]: Gen<T[K]> }
+  ): Gen<T[number]> {
+    return union(...generators);
+  }
+
+  /**
+   * Generate discriminated unions based on a discriminator field.
+   * Discriminator values are the keys in the variants object, preventing collisions.
+   */
+  static discriminatedUnion<
+    K extends string,
+    T extends Record<string, unknown>,
+  >(
+    discriminatorKey: K,
+    variants: Record<string, Gen<T & Record<K, string>>>
+  ): Gen<T & Record<K, string>> {
+    return discriminatedUnion(discriminatorKey, variants);
+  }
+
+  /**
+   * Generate union types with weighted probabilities.
+   */
+  static weightedUnion<T>(choices: Array<[number, Gen<T>]>): Gen<T> {
+    return weightedUnion(choices);
   }
 }
