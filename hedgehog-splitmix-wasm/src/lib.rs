@@ -1,5 +1,39 @@
 use wasm_bindgen::prelude::*;
 
+mod error;
+use error::Error;
+
+/// Data formats supported by the buffer API
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[wasm_bindgen]
+pub enum DataFormat {
+    /// 32-bit unsigned integers, little-endian
+    U32LE = 0,
+    /// 64-bit floating point, little-endian
+    F64LE = 1,
+    /// Boolean values as u8 (0 or 1)
+    BoolU8 = 2,
+}
+
+impl DataFormat {
+    fn from_u8(value: u8) -> Result<Self, Error> {
+        match value {
+            0 => Ok(DataFormat::U32LE),
+            1 => Ok(DataFormat::F64LE),
+            2 => Ok(DataFormat::BoolU8),
+            _ => Err(Error::invalid_format(value)),
+        }
+    }
+
+    fn bytes_per_element(self) -> u64 {
+        match self {
+            DataFormat::U32LE => 4,
+            DataFormat::F64LE => 8,
+            DataFormat::BoolU8 => 1,
+        }
+    }
+}
+
 /// SplitMix64 constants from the reference implementation
 const GOLDEN_GAMMA: u64 = 0x9e3779b97f4a7c15;
 const MIX_MULTIPLIER_1: u64 = 0xbf58476d1ce4e5b9;
@@ -119,20 +153,99 @@ impl Seed {
         let mut results = Vec::with_capacity(count as usize);
         let mut current_state = self.state;
         let gamma = self.gamma;
-        
+
         for _ in 0..count {
             current_state = current_state.wrapping_add(gamma);
             let output = splitmix64_mix(current_state);
             results.push(if output & 1 == 1 { 1 } else { 0 });
         }
-        
+
         BatchBoolResult {
             values: results,
             final_seed: Seed {
                 state: current_state,
-                gamma: gamma,
+                gamma,
             },
         }
+    }
+
+    /// Fill generic byte buffer with random data using structured protocol
+    /// Buffer layout: [1 byte format][8 bytes count][data bytes...]
+    #[wasm_bindgen]
+    pub fn fill_buffer(
+        &self,
+        buffer: &mut [u8],
+        format_u8: u8,
+        count: u64,
+        bound: Option<u32>,
+    ) -> Result<Seed, Error> {
+        // Validation limits
+        const PRACTICAL_MAX_BUFFER: u64 = 1024 * 1024 * 1024; // 1GB conservative limit
+
+        if buffer.len() as u64 > PRACTICAL_MAX_BUFFER {
+            return Err(Error::buffer_too_large(
+                buffer.len() as u64 >> 20,
+                PRACTICAL_MAX_BUFFER >> 20,
+            ));
+        }
+
+        let format = DataFormat::from_u8(format_u8)?;
+        let bytes_per_element = format.bytes_per_element();
+        let header_size = 9; // 1 byte format + 8 bytes count
+        let data_size = count * bytes_per_element;
+        let required_size = header_size + data_size;
+
+        if buffer.len() < required_size as usize {
+            return Err(Error::buffer_too_small(required_size, buffer.len()));
+        }
+
+        // Write header
+        buffer[0] = format_u8;
+        buffer[1..9].copy_from_slice(&count.to_le_bytes());
+
+        // Generate data
+        let mut current_state = self.state;
+        let gamma = self.gamma;
+        let data_start = header_size as usize;
+
+        match format {
+            DataFormat::U32LE => {
+                let bound_u64 = bound.unwrap_or(u32::MAX) as u64;
+                for i in 0..count as usize {
+                    current_state = current_state.wrapping_add(gamma);
+                    let output = splitmix64_mix(current_state);
+                    let bounded = if bound_u64 == u32::MAX as u64 {
+                        output as u32
+                    } else {
+                        ((output as u128 * bound_u64 as u128) >> 64) as u32
+                    };
+                    let offset = data_start + i * 4;
+                    buffer[offset..offset + 4].copy_from_slice(&bounded.to_le_bytes());
+                }
+            }
+            DataFormat::F64LE => {
+                for i in 0..count as usize {
+                    current_state = current_state.wrapping_add(gamma);
+                    let output = splitmix64_mix(current_state);
+                    // Convert to [0, 1) range with high precision
+                    let float_val = (output >> 11) as f64 * (1.0 / (1u64 << 53) as f64);
+                    let offset = data_start + i * 8;
+                    buffer[offset..offset + 8].copy_from_slice(&float_val.to_le_bytes());
+                }
+            }
+            DataFormat::BoolU8 => {
+                for i in 0..count as usize {
+                    current_state = current_state.wrapping_add(gamma);
+                    let output = splitmix64_mix(current_state);
+                    buffer[data_start + i] = if output & 1 == 1 { 1 } else { 0 };
+                }
+            }
+        }
+
+        Ok(Seed {
+            state: current_state,
+            gamma,
+        })
     }
 }
 
