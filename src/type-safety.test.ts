@@ -50,8 +50,8 @@ describe('Type Safety', () => {
     ]);
     expectTypeOf(weightedGen).toEqualTypeOf<Gen<number>>();
 
-    const listGen = Gen.list(gen1);
-    expectTypeOf(listGen).toEqualTypeOf<Gen<number[]>>();
+    const arrayGen = Gen.array(gen1);
+    expectTypeOf(arrayGen).toEqualTypeOf<Gen<number[]>>();
   });
 
   test('Property type inference', () => {
@@ -116,7 +116,7 @@ describe('Type Safety', () => {
   });
 
   test('nested generator types', () => {
-    const nestedGen = Gen.list(Gen.list(int(Range.uniform(1, 10))));
+    const nestedGen = Gen.array(Gen.array(int(Range.uniform(1, 10))));
     expectTypeOf(nestedGen).toEqualTypeOf<Gen<number[][]>>();
 
     const complexGen = Gen.oneOf([

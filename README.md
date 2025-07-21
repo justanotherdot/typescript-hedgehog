@@ -31,7 +31,7 @@ npm install hedgehog
 ## Quick start
 
 ```typescript
-import { forAll, Gen, int } from 'hedgehog';
+import { forAll, Gen, int, string } from 'hedgehog';
 
 // Define a property: reversing a list twice gives the original list
 const reverseTwiceProperty = forAll(
@@ -42,9 +42,29 @@ const reverseTwiceProperty = forAll(
   }
 );
 
-// Test the property
-const result = reverseTwiceProperty.check();
-console.log(result.ok ? 'Property holds!' : 'Property failed!');
+// Test with complex data structures  
+const userProperty = forAll(
+  Gen.object({
+    id: int(1, 1000),
+    name: Gen.optional(string()),           // string | undefined
+    email: Gen.nullable(string()),          // string | null
+    status: Gen.union(                      // 'active' | 'inactive' | 'pending'
+      Gen.constant('active'),
+      Gen.constant('inactive'), 
+      Gen.constant('pending')
+    )
+  }),
+  (user) => {
+    // Property: user objects have valid structure
+    return typeof user.id === 'number' && 
+           user.id > 0 && 
+           ['active', 'inactive', 'pending'].includes(user.status);
+  }
+);
+
+// Test the properties
+console.log('Reverse property:', reverseTwiceProperty.check().ok);
+console.log('User property:', userProperty.check().ok);
 ```
 
 ## Core concepts
@@ -96,6 +116,51 @@ const objectGen = Gen.object({
 const evenNumberGen = numberGen
   .filter(n => n % 2 === 0)
   .map(n => n * 2);
+```
+
+### Union and optional types
+
+Handle nullable, optional, and union types elegantly:
+
+```typescript
+// Optional and nullable generators
+const optionalName = Gen.optional(stringGen);        // string | undefined
+const nullableId = Gen.nullable(numberGen);          // number | null
+
+// Union types
+const statusGen = Gen.union(
+  Gen.constant('pending'),
+  Gen.constant('success'), 
+  Gen.constant('error')
+);  // 'pending' | 'success' | 'error'
+
+// Discriminated unions for complex types
+interface SuccessResult {
+  type: 'success';
+  data: string;
+}
+
+interface ErrorResult {
+  type: 'error';
+  message: string;
+}
+
+const resultGen = Gen.discriminatedUnion('type', {
+  success: Gen.object({
+    type: Gen.constant('success' as const),
+    data: stringGen
+  }),
+  error: Gen.object({
+    type: Gen.constant('error' as const), 
+    message: stringGen
+  })
+});  // SuccessResult | ErrorResult
+
+// Weighted unions for probability control
+const biasedBoolGen = Gen.weightedUnion([
+  [9, Gen.constant(true)],   // 90% true
+  [1, Gen.constant(false)]   // 10% false
+]);
 ```
 
 ### Seeds and reproducibility

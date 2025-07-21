@@ -153,30 +153,30 @@ describe('Gen', () => {
     expect(tree.value).toBe(20); // 10 * 2
   });
 
-  test('list generator produces arrays', () => {
+  test('array generator produces arrays', () => {
     const elemGen = Gen.constant(42);
-    const listGen = Gen.list(elemGen);
+    const arrayGen = Gen.array(elemGen);
 
-    const tree = listGen.generate(size, seed);
+    const tree = arrayGen.generate(size, seed);
     expect(Array.isArray(tree.value)).toBe(true);
     expect(tree.value.length).toBeLessThanOrEqual(size.get());
     expect(tree.value.every((x) => x === 42)).toBe(true);
   });
 
-  test('list generator produces shrinks', () => {
+  test('array generator produces shrinks', () => {
     const elemGen = Gen.constant(1);
-    const listGen = Gen.list(elemGen);
+    const arrayGen = Gen.array(elemGen);
 
-    const tree = listGen.generate(Size.of(5), seed);
+    const tree = arrayGen.generate(Size.of(5), seed);
 
     if (tree.value.length > 0) {
       expect(tree.hasShrinks()).toBe(true);
       const shrinks = tree.shrinks();
 
-      // Should include empty list
+      // Should include empty array
       expect(shrinks.some((arr) => arr.length === 0)).toBe(true);
 
-      // Should include shorter lists
+      // Should include shorter arrays
       const shorterShrinks = shrinks.filter(
         (arr) => arr.length < tree.value.length
       );
@@ -184,20 +184,20 @@ describe('Gen', () => {
     }
   });
 
-  test('listOfLength produces exact length', () => {
+  test('arrayOfLength produces exact length', () => {
     const elemGen = Gen.constant('x');
-    const listGen = Gen.listOfLength(elemGen, 7);
+    const arrayGen = Gen.arrayOfLength(elemGen, 7);
 
-    const tree = listGen.generate(size, seed);
+    const tree = arrayGen.generate(size, seed);
     expect(tree.value).toHaveLength(7);
     expect(tree.value.every((x) => x === 'x')).toBe(true);
   });
 
-  test('listOfLength with zero length', () => {
+  test('arrayOfLength with zero length', () => {
     const elemGen = Gen.constant(1);
-    const listGen = Gen.listOfLength(elemGen, 0);
+    const arrayGen = Gen.arrayOfLength(elemGen, 0);
 
-    const tree = listGen.generate(size, seed);
+    const tree = arrayGen.generate(size, seed);
     expect(tree.value).toEqual([]);
     expect(tree.hasShrinks()).toBe(false);
   });
@@ -251,9 +251,9 @@ describe('Gen', () => {
     }).toThrow(/Failed to generate value satisfying predicate/);
   });
 
-  test('handles zero-length list generation', () => {
-    const emptyListGen = Gen.listOfLength(Gen.constant(42), 0);
-    const tree = emptyListGen.generate(size, seed);
+  test('handles zero-length array generation', () => {
+    const emptyArrayGen = Gen.arrayOfLength(Gen.constant(42), 0);
+    const tree = emptyArrayGen.generate(size, seed);
 
     expect(tree.value).toEqual([]);
     expect(tree.hasShrinks()).toBe(false);

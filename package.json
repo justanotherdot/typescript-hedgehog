@@ -30,7 +30,8 @@
     "test:watch": "vitest",
     "lint": "bin/lint",
     "lint:fix": "bin/lint:fix",
-    "typecheck": "bin/typecheck"
+    "typecheck": "bin/typecheck",
+    "bench": "bin/bench"
   },
   "keywords": [
     "property-based-testing",

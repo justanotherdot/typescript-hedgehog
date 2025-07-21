@@ -2,4 +2,4 @@
 
 rm -rf dist
 bin/typecheck
-npx tsc
+npm exec tsc

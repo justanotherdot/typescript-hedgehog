@@ -93,6 +93,12 @@ export class Seed implements BulkSeed {
     count: number,
     bound: number
   ): { values: number[]; finalSeed: BulkSeed } {
+    // Use buffer API for large batches (>100 elements) for better performance
+    if (count > 100) {
+      return this.nextBoundedBulkBuffer(count, bound);
+    }
+
+    // Use individual calls for small batches to avoid buffer allocation overhead
     const values: number[] = [];
     let currentSeed: Seed = this;
 
@@ -103,6 +109,130 @@ export class Seed implements BulkSeed {
     }
 
     return { values, finalSeed: currentSeed };
+  }
+
+  /**
+   * High-performance bulk generation using direct memory access.
+   * Uses a shared buffer to minimize JavaScript/WASM boundary crossings.
+   */
+  nextBoundedBulkBuffer(
+    count: number,
+    bound: number
+  ): { values: number[]; finalSeed: BulkSeed } {
+    const format = 0; // DataFormat::U32LE
+    const headerSize = 9; // 1 byte format + 8 bytes count
+    const bytesPerElement = 4;
+    const bufferSize = headerSize + count * bytesPerElement;
+
+    const buffer = new Uint8Array(bufferSize);
+
+    try {
+      const finalSeed = this.wasmSeed.fill_buffer(
+        buffer,
+        format,
+        BigInt(count),
+        bound
+      );
+
+      // Read header to validate format and count
+      const receivedFormat = buffer[0];
+      const receivedCount = new DataView(buffer.buffer).getBigUint64(1, true);
+
+      if (receivedFormat !== format) {
+        throw new Error(
+          `Format mismatch: expected ${format}, got ${receivedFormat}`
+        );
+      }
+
+      if (receivedCount !== BigInt(count)) {
+        throw new Error(
+          `Count mismatch: expected ${count}, got ${receivedCount}`
+        );
+      }
+
+      // Extract values using DataView for proper endianness handling
+      const values: number[] = [];
+      const dataView = new DataView(buffer.buffer, headerSize);
+
+      for (let i = 0; i < count; i++) {
+        values.push(dataView.getUint32(i * bytesPerElement, true)); // true = little-endian
+      }
+
+      return { values, finalSeed: new Seed(finalSeed) };
+    } catch (error) {
+      throw new Error(`Buffer operation failed: ${error}`);
+    }
+  }
+
+  /**
+   * Generate bulk random floats in [0, 1) range using buffer API.
+   */
+  nextFloatsBulkBuffer(count: number): {
+    values: number[];
+    finalSeed: BulkSeed;
+  } {
+    const format = 1; // DataFormat::F64LE
+    const headerSize = 9;
+    const bytesPerElement = 8;
+    const bufferSize = headerSize + count * bytesPerElement;
+
+    const buffer = new Uint8Array(bufferSize);
+
+    try {
+      const finalSeed = this.wasmSeed.fill_buffer(
+        buffer,
+        format,
+        BigInt(count),
+        undefined
+      );
+
+      // Extract values
+      const values: number[] = [];
+      const dataView = new DataView(buffer.buffer, headerSize);
+
+      for (let i = 0; i < count; i++) {
+        values.push(dataView.getFloat64(i * bytesPerElement, true));
+      }
+
+      return { values, finalSeed: new Seed(finalSeed) };
+    } catch (error) {
+      throw new Error(`Float buffer operation failed: ${error}`);
+    }
+  }
+
+  /**
+   * Generate bulk random booleans using buffer API.
+   */
+  nextBoolsBulkBuffer(count: number): {
+    values: boolean[];
+    finalSeed: BulkSeed;
+  } {
+    const format = 2; // DataFormat::BoolU8
+    const headerSize = 9;
+    const bytesPerElement = 1;
+    const bufferSize = headerSize + count * bytesPerElement;
+
+    const buffer = new Uint8Array(bufferSize);
+
+    try {
+      const finalSeed = this.wasmSeed.fill_buffer(
+        buffer,
+        format,
+        BigInt(count),
+        undefined
+      );
+
+      // Extract values
+      const values: boolean[] = [];
+
+      for (let i = 0; i < count; i++) {
+        values.push(buffer[headerSize + i] === 1);
+      }
+
+      return { values, finalSeed: new Seed(finalSeed) };
+    } catch (error) {
+      throw new Error(`Boolean buffer operation failed: ${error}`);
+    }
   }
 
   getPerformanceInfo() {

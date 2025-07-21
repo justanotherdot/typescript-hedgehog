@@ -1,6 +1,26 @@
 import { Seed } from './data/seed';
 import { Size } from './data/size';
 import { Tree } from './data/tree';
+import {
+  array,
+  arrayOfLength,
+  object,
+  tuple,
+  ArrayOptions,
+} from './gen/collection.js';
+import {
+  optional,
+  nullable,
+  union,
+  discriminatedUnion,
+  weightedUnion,
+} from './gen/union.js';
+
+// Re-export collection generators
+export { array, arrayOfLength, object, tuple, ArrayOptions };
+
+// Re-export union generators
+export { optional, nullable, union, discriminatedUnion, weightedUnion };
 
 /**
  * A generator for test data of type `T`.
@@ -31,7 +51,9 @@ export class Gen<T> {
   /**
    * Create a generator that always produces the same value.
    */
-  static constant<T>(value: T): Gen<T> {
+  static constant<T extends string | number | boolean | symbol>(
+    value: T
+  ): Gen<T> {
     return new Gen(() => Tree.singleton(value));
   }
 
@@ -147,54 +169,78 @@ export class Gen<T> {
   }
 
   /**
-   * Create a generator that produces lists of values.
+   * Generate arrays with configurable length and element shrinking.
    */
-  static list<T>(elementGen: Gen<T>): Gen<T[]> {
-    return Gen.sized((size) => {
-      const maxLength = size.get();
-      return new Gen((_, seed) => {
-        const [length, newSeed] = seed.nextBounded(maxLength + 1);
-        return Gen.listOfLength(elementGen, length).generate(size, newSeed);
-      });
-    });
+  static array<T>(elementGen: Gen<T>, options?: ArrayOptions): Gen<T[]> {
+    return array(elementGen, options);
   }
 
   /**
-   * Create a generator that produces lists of a specific length.
+   * Generate arrays of exactly the specified length.
    */
-  static listOfLength<T>(elementGen: Gen<T>, length: number): Gen<T[]> {
-    return new Gen((size, seed) => {
-      const elements: T[] = [];
-      const shrinks: Tree<T[]>[] = [];
-      let currentSeed = seed;
+  static arrayOfLength<T>(elementGen: Gen<T>, length: number): Gen<T[]> {
+    return arrayOfLength(elementGen, length);
+  }
 
-      for (let i = 0; i < length; i++) {
-        const [seed1, seed2] = currentSeed.split();
-        const tree = elementGen.generate(size, seed1);
-        elements.push(tree.value);
-        currentSeed = seed2;
+  /**
+   * Generate objects with typed properties.
+   */
+  static object<T extends Record<string, unknown>>(schema: {
+    [K in keyof T]: Gen<T[K]>;
+  }): Gen<T> {
+    return object(schema);
+  }
 
-        if (tree.hasShrinks()) {
-          for (const shrink of tree.shrinks()) {
-            const shrunkList = [
-              ...elements.slice(0, i),
-              shrink,
-              ...elements.slice(i + 1),
-            ];
-            shrinks.push(Tree.singleton(shrunkList));
-          }
-        }
-      }
+  /**
+   * Generate fixed-length heterogeneous tuples.
+   */
+  static tuple<T extends readonly unknown[]>(
+    ...generators: { [K in keyof T]: Gen<T[K]> }
+  ): Gen<T> {
+    return tuple<T>(...generators);
+  }
 
-      if (length > 0) {
-        const smallerLists = Array.from({ length }, (_, i) => {
-          const shorterList = elements.slice(0, i);
-          return Tree.singleton(shorterList);
-        });
-        shrinks.push(...smallerLists);
-      }
+  /**
+   * Generate optional values (T | undefined).
+   */
+  static optional<T>(gen: Gen<T>): Gen<T | undefined> {
+    return optional(gen);
+  }
 
-      return Tree.withChildren(elements, shrinks);
-    });
+  /**
+   * Generate nullable values (T | null).
+   */
+  static nullable<T>(gen: Gen<T>): Gen<T | null> {
+    return nullable(gen);
+  }
+
+  /**
+   * Generate union types from multiple generators.
+   */
+  static union<T extends readonly unknown[]>(
+    ...generators: { [K in keyof T]: Gen<T[K]> }
+  ): Gen<T[number]> {
+    return union(...generators);
+  }
+
+  /**
+   * Generate discriminated unions based on a discriminator field.
+   * Discriminator values are the keys in the variants object, preventing collisions.
+   */
+  static discriminatedUnion<
+    K extends string,
+    T extends Record<string, unknown>,
+  >(
+    discriminatorKey: K,
+    variants: Record<string, Gen<T & Record<K, string>>>
+  ): Gen<T & Record<K, string>> {
+    return discriminatedUnion(discriminatorKey, variants);
+  }
+
+  /**
+   * Generate union types with weighted probabilities.
+   */
+  static weightedUnion<T>(choices: Array<[number, Gen<T>]>): Gen<T> {
+    return weightedUnion(choices);
   }
 }
