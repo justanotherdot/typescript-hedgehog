@@ -131,7 +131,7 @@ export function buildNumericShrinks(
   origin: number,
   isValid: (candidate: number) => boolean
 ): Tree<number>[] {
-  if (value === origin) {
+  if (value === origin || !Number.isFinite(value) || !Number.isFinite(origin)) {
     return [];
   }
 
@@ -143,13 +143,14 @@ export function buildNumericShrinks(
       ? Math.floor((value + origin) / 2)
       : Math.ceil((value + origin) / 2);
 
-  if (mid !== value && isValid(mid)) {
+  // Ensure we're making progress and the mid value is different
+  if (mid !== value && mid !== origin && Number.isFinite(mid) && isValid(mid)) {
     const childShrinks = buildNumericShrinks(mid, origin, isValid);
     shrinks.push(Tree.withChildren(mid, childShrinks));
   }
 
   // Try origin directly if valid
-  if (isValid(origin)) {
+  if (origin !== value && isValid(origin)) {
     shrinks.push(Tree.singleton(origin));
   }
 

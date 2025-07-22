@@ -2,4 +2,4 @@
 
 # Performance benchmarks for Hedgehog implementations
 
-npx vitest run src/**/*.bench.ts --reporter=verbose
+npx vitest run --config vitest.bench.config.ts --reporter=verbose
