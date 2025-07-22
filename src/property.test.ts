@@ -1,7 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { forAll } from './property';
-import { bool, int, Ints } from './gen/primitive';
-import { Gen } from './gen';
+import { Gen, Ints } from './gen';
 import { Tree } from './data/tree';
 import { Config } from './config';
 import { Seed } from './data/seed';
@@ -183,7 +182,7 @@ describe('Property testing', () => {
 
   test('configuration with zero test limit', () => {
     const zeroTestsConfig = Config.default().withTests(0);
-    const prop = forAll(bool(), () => true);
+    const prop = forAll(Gen.bool(), () => true);
     const result = prop.run(zeroTestsConfig);
 
     expect(result.type).toBe('pass'); // Should pass trivially with 0 tests
@@ -192,7 +191,7 @@ describe('Property testing', () => {
 
   test('seed consistency across multiple runs', () => {
     const seed = Seed.fromNumber(42);
-    const prop = forAll(int(Range.uniform(1, 100)), () => true);
+    const prop = forAll(Gen.int(Range.uniform(1, 100)), () => true);
 
     // Same seed should produce same test sequence
     const result1 = prop.run(Config.default(), seed);

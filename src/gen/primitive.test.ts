@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { bool, int, string, stringOfLength, Ints, Strings } from './primitive';
+import { Gen, Ints, Strings } from '../gen.js';
 import { Range, Size } from '../data/size';
 import { Seed } from '../data/seed';
 
@@ -9,7 +9,7 @@ describe('primitive generators', () => {
 
   describe('bool', () => {
     test('generates boolean values', () => {
-      const gen = bool();
+      const gen = Gen.bool();
       const tree = gen.generate(size, seed);
 
       expect(typeof tree.value).toBe('boolean');
@@ -22,7 +22,7 @@ describe('primitive generators', () => {
   describe('int', () => {
     test('generates integers within range', () => {
       const range = Range.uniform(1, 10);
-      const gen = int(range);
+      const gen = Gen.int(range);
       const tree = gen.generate(size, seed);
 
       expect(Number.isInteger(tree.value)).toBe(true);
@@ -32,7 +32,7 @@ describe('primitive generators', () => {
 
     test('generates shrinks towards origin', () => {
       const range = Range.uniform(0, 100).withOrigin(0);
-      const gen = int(range);
+      const gen = Gen.int(range);
       const tree = gen.generate(size, seed);
 
       if (tree.value !== 0) {
@@ -47,7 +47,7 @@ describe('primitive generators', () => {
 
     test('respects range bounds in shrinks', () => {
       const range = Range.uniform(5, 15).withOrigin(10);
-      const gen = int(range);
+      const gen = Gen.int(range);
       const tree = gen.generate(size, seed);
 
       const allValues = [tree.value, ...tree.shrinks()];
@@ -60,7 +60,7 @@ describe('primitive generators', () => {
 
   describe('string', () => {
     test('generates strings within size limit', () => {
-      const gen = string();
+      const gen = Gen.string();
       const tree = gen.generate(size, seed);
 
       expect(typeof tree.value).toBe('string');
@@ -68,7 +68,7 @@ describe('primitive generators', () => {
     });
 
     test('generates shrinks by reducing length', () => {
-      const gen = string();
+      const gen = Gen.string();
       const tree = gen.generate(Size.of(5), seed);
 
       if (tree.value.length > 0) {
@@ -114,8 +114,8 @@ describe('primitive generators', () => {
         Number.MIN_SAFE_INTEGER + 1
       );
 
-      const maxGen = int(maxRange);
-      const minGen = int(minRange);
+      const maxGen = Gen.int(maxRange);
+      const minGen = Gen.int(minRange);
 
       const maxTree = maxGen.generate(Size.of(10), Seed.fromNumber(42));
       const minTree = minGen.generate(Size.of(10), Seed.fromNumber(42));
@@ -153,7 +153,7 @@ describe('primitive generators', () => {
 
     test('handles string generation edge cases', () => {
       // Empty string generation
-      const emptyStringGen = stringOfLength(0);
+      const emptyStringGen = Gen.stringOfLength(0);
       const emptyTree = emptyStringGen.generate(
         Size.of(10),
         Seed.fromNumber(42)
@@ -161,7 +161,7 @@ describe('primitive generators', () => {
       expect(emptyTree.value).toBe('');
 
       // Reasonably long string for testing
-      const longStringGen = stringOfLength(100);
+      const longStringGen = Gen.stringOfLength(100);
       const longTree = longStringGen.generate(Size.of(10), Seed.fromNumber(42));
       expect(longTree.value.length).toBe(100);
     });
@@ -171,6 +171,148 @@ describe('primitive generators', () => {
       const tree = gen.generate(size, seed);
 
       expect(tree.value).toHaveLength(5);
+    });
+  });
+
+  describe('number', () => {
+    test('generates numbers within range', () => {
+      const gen = Gen.number({ min: -10, max: 10 });
+      const tree = gen.generate(size, seed);
+
+      expect(typeof tree.value).toBe('number');
+      expect(tree.value).toBeGreaterThanOrEqual(-10);
+      expect(tree.value).toBeLessThanOrEqual(10);
+      expect(Number.isFinite(tree.value)).toBe(true);
+    });
+
+    test('respects multipleOf constraint', () => {
+      const gen = Gen.number({ min: 0, max: 100, multipleOf: 5 });
+      const samples = gen.samples(50);
+
+      samples.forEach((value) => {
+        expect(value % 5).toBeCloseTo(0, 10);
+      });
+    });
+
+    test('generates infinite values when finite=false', () => {
+      const gen = Gen.number({ finite: false });
+      const samples = gen.samples(100);
+
+      const hasInfinite = samples.some((v) => !Number.isFinite(v));
+      const hasFinite = samples.some((v) => Number.isFinite(v));
+
+      expect(hasInfinite).toBe(true);
+      expect(hasFinite).toBe(true);
+    });
+
+    test('shrinks towards zero when in range', () => {
+      const gen = Gen.number({ min: -100, max: 100 });
+      const tree = gen.generate(size, seed);
+
+      if (tree.value !== 0) {
+        expect(tree.hasShrinks()).toBe(true);
+      }
+    });
+  });
+
+  describe('date', () => {
+    test('generates dates within range', () => {
+      const minDate = new Date('2020-01-01');
+      const maxDate = new Date('2023-12-31');
+      const gen = Gen.date({ min: minDate, max: maxDate });
+      const tree = gen.generate(size, seed);
+
+      expect(tree.value).toBeInstanceOf(Date);
+      expect(tree.value.getTime()).toBeGreaterThanOrEqual(minDate.getTime());
+      expect(tree.value.getTime()).toBeLessThanOrEqual(maxDate.getTime());
+    });
+
+    test('generates different dates', () => {
+      const gen = Gen.date();
+      const samples = gen.samples(20);
+
+      const uniqueTimes = new Set(samples.map((d) => d.getTime()));
+      expect(uniqueTimes.size).toBeGreaterThan(1);
+    });
+
+    test('shrinks dates towards minimum', () => {
+      const minDate = new Date('2020-01-01');
+      const maxDate = new Date('2023-12-31');
+      const gen = Gen.date({ min: minDate, max: maxDate });
+      const tree = gen.generate(size, seed);
+
+      if (tree.value.getTime() !== minDate.getTime()) {
+        expect(tree.hasShrinks()).toBe(true);
+      }
+    });
+  });
+
+  describe('enumValue', () => {
+    test('generates values from the enum array', () => {
+      const values = ['red', 'green', 'blue'] as const;
+      const gen = Gen.enum(values);
+      const samples = gen.samples(100);
+
+      samples.forEach((value) => {
+        expect(values).toContain(value);
+      });
+
+      // Should generate all values over many samples
+      const uniqueValues = new Set(samples);
+      expect(uniqueValues.size).toBe(3);
+    });
+
+    test('shrinks towards first element', () => {
+      const values = ['zebra', 'apple', 'banana'] as const;
+      const gen = Gen.enum(values);
+
+      // Mock seed to return index 2 (banana)
+      const mockSeed = { nextBounded: () => [2, seed] } as any;
+      const tree = gen.generate(size, mockSeed);
+
+      expect(tree.value).toBe('banana');
+
+      const shrinks = tree.shrinks();
+      expect(shrinks).toHaveLength(1);
+      expect(shrinks[0]).toBe('zebra');
+    });
+
+    test('handles single element arrays', () => {
+      const values = ['only'] as const;
+      const gen = Gen.enum(values);
+      const tree = gen.generate(size, seed);
+
+      expect(tree.value).toBe('only');
+      expect(tree.shrinks()).toHaveLength(0);
+    });
+  });
+
+  describe('literal', () => {
+    test('always generates the same value', () => {
+      const gen = Gen.literal('constant');
+      const samples = gen.samples(20);
+
+      samples.forEach((value) => {
+        expect(value).toBe('constant');
+      });
+    });
+
+    test('works with different literal types', () => {
+      const stringGen = Gen.literal('text');
+      const numberGen = Gen.literal(42);
+      const boolGen = Gen.literal(true);
+
+      expect(stringGen.sample()).toBe('text');
+      expect(numberGen.sample()).toBe(42);
+      expect(boolGen.sample()).toBe(true);
+    });
+
+    test('has no shrinks for literals', () => {
+      const gen = Gen.literal('constant');
+      const tree = gen.generate(size, seed);
+
+      expect(tree.value).toBe('constant');
+      expect(tree.shrinks()).toHaveLength(0);
     });
   });
 });

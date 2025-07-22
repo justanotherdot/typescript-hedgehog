@@ -1,4 +1,4 @@
-import { Gen } from '../gen.js';
+import { GeneratorFn, create } from './core.js';
 import { Tree } from '../data/tree.js';
 
 /**
@@ -9,8 +9,8 @@ import { Tree } from '../data/tree.js';
  * Generate optional values (T | undefined).
  * Generates undefined with a probability based on size.
  */
-export function optional<T>(gen: Gen<T>): Gen<T | undefined> {
-  return Gen.create((size, seed) => {
+export function optional<T>(gen: GeneratorFn<T>): GeneratorFn<T | undefined> {
+  return create((size, seed) => {
     // Probability of undefined decreases with size
     // At size 0: 50% undefined, at size 100: ~9% undefined
     const undefinedProbability = Math.max(0.05, 0.5 - size.get() * 0.004);
@@ -20,13 +20,13 @@ export function optional<T>(gen: Gen<T>): Gen<T | undefined> {
     if (shouldBeUndefined < undefinedProbability) {
       // Generate undefined with shrink to defined value
       const shrinks: Tree<T | undefined>[] = [];
-      const definedTree = gen.generate(size, newSeed);
+      const definedTree = gen(size, newSeed);
       shrinks.push(Tree.singleton(definedTree.value));
 
       return Tree.withChildren(undefined, shrinks);
     } else {
       // Generate defined value with shrink to undefined
-      const tree = gen.generate(size, newSeed);
+      const tree = gen(size, newSeed);
       const shrinks: Tree<T | undefined>[] = [Tree.singleton(undefined)];
 
       // Include shrinks from the underlying generator
@@ -45,8 +45,8 @@ export function optional<T>(gen: Gen<T>): Gen<T | undefined> {
  * Generate nullable values (T | null).
  * Similar to optional but uses null instead of undefined.
  */
-export function nullable<T>(gen: Gen<T>): Gen<T | null> {
-  return Gen.create((size, seed) => {
+export function nullable<T>(gen: GeneratorFn<T>): GeneratorFn<T | null> {
+  return create((size, seed) => {
     // Probability of null decreases with size
     const nullProbability = Math.max(0.05, 0.5 - size.get() * 0.004);
 
@@ -55,13 +55,13 @@ export function nullable<T>(gen: Gen<T>): Gen<T | null> {
     if (shouldBeNull < nullProbability) {
       // Generate null with shrink to defined value
       const shrinks: Tree<T | null>[] = [];
-      const definedTree = gen.generate(size, newSeed);
+      const definedTree = gen(size, newSeed);
       shrinks.push(Tree.singleton(definedTree.value));
 
       return Tree.withChildren(null, shrinks);
     } else {
       // Generate defined value with shrink to null
-      const tree = gen.generate(size, newSeed);
+      const tree = gen(size, newSeed);
       const shrinks: Tree<T | null>[] = [Tree.singleton(null)];
 
       // Include shrinks from the underlying generator
@@ -81,16 +81,16 @@ export function nullable<T>(gen: Gen<T>): Gen<T | null> {
  * Chooses between generators with equal probability.
  */
 export function union<T extends readonly unknown[]>(
-  ...generators: { [K in keyof T]: Gen<T[K]> }
-): Gen<T[number]> {
+  ...generators: { [K in keyof T]: GeneratorFn<T[K]> }
+): GeneratorFn<T[number]> {
   if (generators.length === 0) {
     throw new Error('union requires at least one generator');
   }
 
-  return Gen.create((size, seed) => {
+  return create((size, seed) => {
     const [index, newSeed] = seed.nextBounded(generators.length);
     const selectedGen = generators[index];
-    const tree = selectedGen.generate(size, newSeed);
+    const tree = selectedGen(size, newSeed);
 
     const shrinks: Tree<T[number]>[] = [];
 
@@ -105,7 +105,7 @@ export function union<T extends readonly unknown[]>(
     for (let i = 0; i < generators.length; i++) {
       if (i !== index) {
         const altGen = generators[i];
-        const altTree = altGen.generate(size, newSeed);
+        const altTree = altGen(size, newSeed);
         shrinks.push(Tree.singleton(altTree.value));
       }
     }
@@ -123,8 +123,8 @@ export function discriminatedUnion<
   T extends Record<string, unknown>,
 >(
   discriminatorKey: K,
-  variants: Record<string, Gen<T & Record<K, string>>>
-): Gen<T & Record<K, string>> {
+  variants: Record<string, GeneratorFn<T & Record<K, string>>>
+): GeneratorFn<T & Record<K, string>> {
   const discriminatorValues = Object.keys(variants);
 
   if (discriminatorValues.length === 0) {
@@ -132,12 +132,12 @@ export function discriminatedUnion<
   }
 
   // Runtime validation: check that generators produce correct discriminator values
-  return Gen.create((size, seed) => {
+  return create((size, seed) => {
     const [index, newSeed] = seed.nextBounded(discriminatorValues.length);
     const expectedDiscriminator = discriminatorValues[index];
     const selectedGen = variants[expectedDiscriminator];
 
-    const tree = selectedGen.generate(size, newSeed);
+    const tree = selectedGen(size, newSeed);
     const generatedValue = tree.value;
 
     // Validate discriminator field exists and matches
@@ -183,7 +183,7 @@ export function discriminatedUnion<
     for (const otherDiscriminator of discriminatorValues) {
       if (otherDiscriminator !== expectedDiscriminator) {
         const altGen = variants[otherDiscriminator];
-        const altTree = altGen.generate(size, newSeed);
+        const altTree = altGen(size, newSeed);
         shrinks.push(Tree.singleton(altTree.value));
       }
     }
@@ -196,7 +196,9 @@ export function discriminatedUnion<
  * Generate union types with weighted probabilities.
  * Each generator has an associated weight determining selection probability.
  */
-export function weightedUnion<T>(choices: Array<[number, Gen<T>]>): Gen<T> {
+export function weightedUnion<T>(
+  choices: Array<[number, GeneratorFn<T>]>
+): GeneratorFn<T> {
   if (choices.length === 0) {
     throw new Error('weightedUnion requires at least one choice');
   }
@@ -206,7 +208,7 @@ export function weightedUnion<T>(choices: Array<[number, Gen<T>]>): Gen<T> {
     throw new Error('weightedUnion requires positive total weight');
   }
 
-  return Gen.create((size, seed) => {
+  return create((size, seed) => {
     const [random, newSeed] = seed.nextBounded(totalWeight);
     let currentWeight = 0;
     let selectedIndex = 0;
@@ -221,7 +223,7 @@ export function weightedUnion<T>(choices: Array<[number, Gen<T>]>): Gen<T> {
     }
 
     const [, selectedGen] = choices[selectedIndex];
-    const tree = selectedGen.generate(size, newSeed);
+    const tree = selectedGen(size, newSeed);
 
     const shrinks: Tree<T>[] = [];
 
@@ -236,7 +238,7 @@ export function weightedUnion<T>(choices: Array<[number, Gen<T>]>): Gen<T> {
     for (let i = 0; i < choices.length; i++) {
       if (i !== selectedIndex) {
         const [, altGen] = choices[i];
-        const altTree = altGen.generate(size, newSeed);
+        const altTree = altGen(size, newSeed);
         shrinks.push(Tree.singleton(altTree.value));
       }
     }

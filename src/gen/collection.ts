@@ -1,4 +1,4 @@
-import { Gen } from '../gen.js';
+import { GeneratorFn, create, sized } from './core.js';
 import { Tree } from '../data/tree.js';
 
 /**
@@ -15,26 +15,26 @@ export interface ArrayOptions {
  * Generate arrays with configurable length and element shrinking.
  */
 export function array<T>(
-  elementGen: Gen<T>,
+  elementGen: GeneratorFn<T>,
   options: ArrayOptions = {}
-): Gen<T[]> {
+): GeneratorFn<T[]> {
   const { minLength = 0, maxLength, length } = options;
 
   if (length !== undefined) {
     return arrayOfLength(elementGen, length);
   }
 
-  return Gen.sized((size) => {
+  return sized((size) => {
     const defaultMaxLength = size.get();
     const effectiveMaxLength = maxLength ?? defaultMaxLength;
     const finalMaxLength = Math.max(minLength, effectiveMaxLength);
 
-    return Gen.create((_size, seed) => {
+    return create((_size, seed) => {
       const [length, newSeed] = seed.nextBounded(
         finalMaxLength - minLength + 1
       );
       const actualLength = minLength + length;
-      return arrayOfLength(elementGen, actualLength).generate(_size, newSeed);
+      return arrayOfLength(elementGen, actualLength)(_size, newSeed);
     });
   });
 }
@@ -42,8 +42,11 @@ export function array<T>(
 /**
  * Generate arrays of exactly the specified length.
  */
-export function arrayOfLength<T>(elementGen: Gen<T>, length: number): Gen<T[]> {
-  return Gen.create((size, seed) => {
+export function arrayOfLength<T>(
+  elementGen: GeneratorFn<T>,
+  length: number
+): GeneratorFn<T[]> {
+  return create((size, seed) => {
     if (length === 0) {
       return Tree.singleton([]);
     }
@@ -55,7 +58,7 @@ export function arrayOfLength<T>(elementGen: Gen<T>, length: number): Gen<T[]> {
     // Generate all elements
     for (let i = 0; i < length; i++) {
       const [seed1, seed2] = currentSeed.split();
-      const tree = elementGen.generate(size, seed1);
+      const tree = elementGen(size, seed1);
       elements.push(tree.value);
       elementTrees.push(tree);
       currentSeed = seed2;
@@ -92,9 +95,9 @@ export function arrayOfLength<T>(elementGen: Gen<T>, length: number): Gen<T[]> {
  * Generate objects with typed properties.
  */
 export function object<T extends Record<string, unknown>>(schema: {
-  [K in keyof T]: Gen<T[K]>;
-}): Gen<T> {
-  return Gen.create((size, seed) => {
+  [K in keyof T]: GeneratorFn<T[K]>;
+}): GeneratorFn<T> {
+  return create((size, seed) => {
     const keys = Object.keys(schema) as Array<keyof T>;
     if (keys.length === 0) {
       return Tree.singleton({} as T);
@@ -108,7 +111,7 @@ export function object<T extends Record<string, unknown>>(schema: {
     for (const key of keys) {
       const [seed1, seed2] = currentSeed.split();
       const gen = schema[key];
-      const tree = gen.generate(size, seed1);
+      const tree = gen(size, seed1);
       values[key] = tree.value;
       valueTrees[key] = tree;
       currentSeed = seed2;
@@ -139,9 +142,9 @@ export function object<T extends Record<string, unknown>>(schema: {
  * Generate fixed-length heterogeneous tuples.
  */
 export function tuple<T extends readonly unknown[]>(
-  ...generators: { [K in keyof T]: Gen<T[K]> }
-): Gen<T> {
-  return Gen.create((size, seed) => {
+  ...generators: { [K in keyof T]: GeneratorFn<T[K]> }
+): GeneratorFn<T> {
+  return create((size, seed) => {
     if (generators.length === 0) {
       return Tree.singleton([] as unknown as T);
     }
@@ -154,7 +157,7 @@ export function tuple<T extends readonly unknown[]>(
     for (let i = 0; i < generators.length; i++) {
       const [seed1, seed2] = currentSeed.split();
       const gen = generators[i];
-      const tree = gen.generate(size, seed1);
+      const tree = gen(size, seed1);
       elements.push(tree.value);
       elementTrees.push(tree);
       currentSeed = seed2;

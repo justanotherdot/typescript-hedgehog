@@ -1,6 +1,5 @@
 import { describe, test, expect } from 'vitest';
 import { forAll } from './property';
-import { bool, int, string } from './gen/primitive';
 import { Gen } from './gen';
 import { Range, Ranges } from './data/size';
 import { Config } from './config';
@@ -8,38 +7,38 @@ import { Seed } from './data/seed';
 
 describe('Meta Properties', () => {
   test('bool generator produces only booleans', () => {
-    const prop = forAll(bool(), (b) => typeof b === 'boolean');
+    const prop = forAll(Gen.bool(), (b) => typeof b === 'boolean');
     const result = prop.run();
     expect(result.type).toBe('pass');
   });
 
   test('int generator respects range bounds', () => {
     const range = Range.uniform(10, 20);
-    const prop = forAll(int(range), (n) => n >= 10 && n <= 20);
+    const prop = forAll(Gen.int(range), (n) => n >= 10 && n <= 20);
     const result = prop.run();
     expect(result.type).toBe('pass');
   });
 
   test('string generator produces strings', () => {
-    const prop = forAll(string(), (s) => typeof s === 'string');
+    const prop = forAll(Gen.string(), (s) => typeof s === 'string');
     const result = prop.run();
     expect(result.type).toBe('pass');
   });
 
   test('positive integers are positive', () => {
-    const prop = forAll(int(Ranges.positive()), (n) => n > 0);
+    const prop = forAll(Gen.int(Ranges.positive()), (n) => n > 0);
     const result = prop.run();
     expect(result.type).toBe('pass');
   });
 
   test('natural numbers are non-negative', () => {
-    const prop = forAll(int(Ranges.natural()), (n) => n >= 0);
+    const prop = forAll(Gen.int(Ranges.natural()), (n) => n >= 0);
     const result = prop.run();
     expect(result.type).toBe('pass');
   });
 
   test('array generator produces arrays with correct element types', () => {
-    const arrayGen = Gen.array(int(Range.uniform(1, 10)));
+    const arrayGen = Gen.array(Gen.int(Range.uniform(1, 10)));
     const prop = forAll(
       arrayGen,
       (arr) =>
@@ -59,7 +58,7 @@ describe('Meta Properties', () => {
   });
 
   test('mapped generators preserve relationships', () => {
-    const baseGen = int(Range.uniform(0, 100));
+    const baseGen = Gen.int(Range.uniform(0, 100));
     const doubledGen = baseGen.map((n) => n * 2);
     const prop = forAll(doubledGen, (n) => n % 2 === 0);
     const result = prop.run();
@@ -67,14 +66,14 @@ describe('Meta Properties', () => {
   });
 
   test('filtered generators satisfy predicate', () => {
-    const evenGen = int(Range.uniform(0, 100)).filter((n) => n % 2 === 0);
+    const evenGen = Gen.int(Range.uniform(0, 100)).filter((n) => n % 2 === 0);
     const prop = forAll(evenGen, (n) => n % 2 === 0);
     const result = prop.run();
     expect(result.type).toBe('pass');
   });
 
   test('bound generators maintain composition', () => {
-    const baseGen = int(Range.uniform(1, 10));
+    const baseGen = Gen.int(Range.uniform(1, 10));
     const arrayGen = baseGen.bind((n) =>
       Gen.arrayOfLength(Gen.constant('x'), n)
     );
@@ -89,7 +88,7 @@ describe('Meta Properties', () => {
 
   test('property that should fail demonstrates shrinking', () => {
     // This property should fail and find a minimal counterexample
-    const prop = forAll(int(Range.uniform(1, 100)), (n) => n < 50);
+    const prop = forAll(Gen.int(Range.uniform(1, 100)), (n) => n < 50);
     const result = prop.run();
 
     expect(result.type).toBe('fail');
@@ -104,7 +103,7 @@ describe('Meta Properties', () => {
 
   test('string length property with shrinking', () => {
     // Property that fails for strings longer than 5 characters
-    const prop = forAll(string(), (s) => s.length <= 5);
+    const prop = forAll(Gen.string(), (s) => s.length <= 5);
     const result = prop.run(Config.default().withTests(1000));
 
     if (result.type === 'fail') {
@@ -116,7 +115,7 @@ describe('Meta Properties', () => {
 
   test('list shrinking finds minimal failing case', () => {
     // Property that fails for lists with more than 3 elements
-    const arrayGen = Gen.array(int(Range.uniform(1, 10)));
+    const arrayGen = Gen.array(Gen.int(Range.uniform(1, 10)));
     const prop = forAll(arrayGen, (arr) => arr.length <= 3);
     const result = prop.run(Config.default().withTests(1000));
 
