@@ -51,30 +51,33 @@ type Seed = [number, number] // SplitMix64 state
 **Key files:**
 - `src/gen/primitive.ts` - Basic value generators with shrinking
 
-### Phase 3: Collection generators
+### Phase 3: Collection generators ✅ **COMPLETED**
 
-**TODO:**
-- [ ] Array generators with size control
-- [ ] Object generators with property selection
-- [ ] Recursive generators for nested structures
-- [ ] Tuple generators
+**DONE:**
+- [x] Array generators with size control
+- [x] Object generators with property selection  
+- [x] Recursive generators for nested structures
+- [x] Tuple generators
+- [x] Union type generators (optional, nullable, discriminated unions)
 
 **Key files:**
 - `src/gen/collection.ts` - Array and object generators
-- `src/gen/recursive.ts` - Recursive structure support
+- `src/gen/union.ts` - Union type generators
 
-### Phase 4: Property testing core
+### Phase 4: Property testing core ✅ **COMPLETED**
 
-**TODO:**
-- [ ] Property definition and execution
-- [ ] Test configuration (test count, shrink limit, size)
-- [ ] Shrinking algorithm implementation
-- [ ] Result types and reporting
+**DONE:**
+- [x] Property definition and execution
+- [x] Test configuration (test count, shrink limit, size)
+- [x] Shrinking algorithm implementation
+- [x] Result types and reporting
+- [x] Extended primitive generators (number, date, enum, literal)
+- [x] ShrinkBuilder utility for consistent shrinking patterns
 
 **Key files:**
-- `src/property.ts` - Property definition
-- `src/config.ts` - Test configuration
-- `src/shrink.ts` - Shrinking algorithm
+- `src/property.ts` - Property definition and execution
+- `src/config.ts` - Test configuration 
+- `src/gen/shrink.ts` - Shrinking utilities and patterns
 - `src/result.ts` - Test result types
 
 ### Phase 5: Advanced features
@@ -141,3 +144,62 @@ type Seed = [number, number] // SplitMix64 state
 - Integration with fuzzing tools
 - Machine learning guided generation
 - Generating property-based tests from Zod schemas
+
+## Shrinking sophistication analysis
+
+Based on comparison with the Rust hedgehog implementation, our current shrinking has room for significant improvement:
+
+### Current implementation (6/10 sophistication)
+
+**Strengths:**
+- Covers fundamental shrinking patterns
+- `ShrinkBuilder` utility provides consistency
+- Basic coverage of main data types (numbers, strings, collections, unions)
+- Clean rose tree structure with breadth-first exploration
+
+**Gaps:**
+- Simple linear shrinking (halfway to origin, then origin)
+- Basic character simplification (only uppercase→lowercase, special→space)
+- Limited collection strategies (just length reduction and element-wise)
+- Manual shrink construction vs automatic composition
+
+### Rust implementation reference (9/10 sophistication)
+
+**Advanced features we could adopt:**
+
+**Algorithmic improvements:**
+- **Binary search shrinking** for numeric values (more efficient shrinking paths)
+- **Distribution-aware shrinking** that respects the original generator distribution
+- **Smart collection removal** (chunks, quarters, halves, smart element removal)
+- **Comprehensive character hierarchy** (uppercase→lowercase→simple→'a'/'0'/' ')
+
+**Structural improvements:**
+- **Automatic shrinking composition** through monadic generator design
+- **Lazy shrinking evaluation** for better performance
+- **Sophisticated tree operations** (`expand`, `filter` with shrink preservation)
+- **Rich debugging tools** (tree rendering, visualization, shrink path analysis)
+
+**Data type coverage:**
+- **Deep nested type shrinking** (e.g., `Vec<Option<String>>` with proper composition)
+- **Constraint-preserving shrinking** for filtered generators
+- **Size-aware shrinking** that respects original size parameters
+
+### Recommended improvements (priority order)
+
+**High priority:**
+1. **Binary search numeric shrinking** - Replace linear shrinking with binary search
+2. **Advanced collection strategies** - Implement chunk removal and smart element removal
+3. **Character simplification hierarchy** - Complete character shrinking taxonomy
+4. **Tree debugging tools** - Add `render()`, `render_compact()` for visualization
+
+**Medium priority:**
+5. **Distribution-aware shrinking** - Make shrinking respect original distributions
+6. **Automatic composition** - Improve shrinking propagation through combinators
+7. **Constraint preservation** - Ensure filtered generators maintain constraints during shrinking
+
+**Low priority:**
+8. **Lazy evaluation** - Optimize shrinking performance through lazy tree construction
+9. **Deep nested shrinking** - Handle complex nested types with proper composition
+10. **Performance optimization** - Profile and optimize shrinking algorithms
+
+This analysis shows clear paths for improving our shrinking sophistication while maintaining the clean TypeScript architecture we've established.

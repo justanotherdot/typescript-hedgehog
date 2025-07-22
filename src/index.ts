@@ -6,15 +6,14 @@ export {
   renderTreeCompact,
   getTreeStats,
 } from './data/tree-render';
-export { Gen } from './gen';
 export {
-  bool,
-  int,
-  string,
-  stringOfLength,
+  Gen,
   Ints,
   Strings,
-} from './gen/primitive';
+  NumberOptions,
+  DateOptions,
+  ArrayOptions,
+} from './gen';
 export { Property, forAll } from './property';
 export { Config } from './config';
 export {

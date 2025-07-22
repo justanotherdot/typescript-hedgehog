@@ -1,6 +1,6 @@
 // Public interface for the Hedgehog generator library
 import { GeneratorFn } from './gen/core.js';
-import { Size } from './data/size.js';
+import { Size, Range } from './data/size.js';
 import { Seed } from './data/seed.js';
 import { Tree } from './data/tree.js';
 
@@ -17,7 +17,13 @@ import {
   Ints as PrimitiveInts,
   Strings as PrimitiveStrings,
 } from './gen/primitive.js';
-import { array, arrayOfLength, object, tuple } from './gen/collection.js';
+import {
+  array,
+  arrayOfLength,
+  object,
+  tuple,
+  ArrayOptions,
+} from './gen/collection.js';
 import {
   optional,
   nullable,
@@ -25,6 +31,25 @@ import {
   discriminatedUnion,
   weightedUnion,
 } from './gen/union.js';
+
+/**
+ * Options for number generation.
+ */
+export interface NumberOptions {
+  min?: number;
+  max?: number;
+  multipleOf?: number;
+  finite?: boolean;
+  safe?: boolean;
+}
+
+/**
+ * Options for date generation.
+ */
+export interface DateOptions {
+  min?: Date;
+  max?: Date;
+}
 
 /**
  * Main Generator class - the public interface for property-based testing.
@@ -179,7 +204,7 @@ export class Gen<T> {
     return new Gen(generatorFn);
   }
 
-  static int(range: any): Gen<number> {
+  static int(range: Range<number>): Gen<number> {
     const generatorFn = int(range);
     return new Gen(generatorFn);
   }
@@ -195,18 +220,12 @@ export class Gen<T> {
   }
 
   // Extended primitive generators
-  static number(options?: {
-    min?: number;
-    max?: number;
-    multipleOf?: number;
-    finite?: boolean;
-    safe?: boolean;
-  }): Gen<number> {
+  static number(options?: NumberOptions): Gen<number> {
     const generatorFn = number(options);
     return new Gen(generatorFn);
   }
 
-  static date(options?: { min?: Date; max?: Date }): Gen<Date> {
+  static date(options?: DateOptions): Gen<Date> {
     const generatorFn = date(options);
     return new Gen(generatorFn);
   }
@@ -224,7 +243,7 @@ export class Gen<T> {
   }
 
   // Collection generators
-  static array<T>(gen: Gen<T>, options?: any): Gen<T[]> {
+  static array<T>(gen: Gen<T>, options?: ArrayOptions): Gen<T[]> {
     const generatorFn = array(gen.generator, options);
     return new Gen(generatorFn);
   }
@@ -237,7 +256,7 @@ export class Gen<T> {
   static object<T extends Record<string, unknown>>(generators: {
     [K in keyof T]: Gen<T[K]>;
   }): Gen<T> {
-    const generatorFns: { [K in keyof T]: GeneratorFn<T[K]> } = {} as any;
+    const generatorFns = {} as { [K in keyof T]: GeneratorFn<T[K]> };
     for (const key in generators) {
       generatorFns[key] = generators[key].generator;
     }
