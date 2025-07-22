@@ -1,14 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { Gen } from '../gen.js';
-import {
-  optional,
-  nullable,
-  union,
-  discriminatedUnion,
-  weightedUnion,
-} from './union.js';
-import { bool, int, string } from './primitive.js';
-import { object } from './collection.js';
 import { Range } from '../data/size.js';
 import { Size } from '../data/size.js';
 import { Seed } from '../seed/bigint.js';
@@ -17,9 +8,9 @@ describe('Union generators', () => {
   const seed = Seed.fromNumber(42);
   const size = Size.of(10);
 
-  describe('optional()', () => {
+  describe('Gen.optional()', () => {
     it('generates both undefined and defined values', () => {
-      const gen = optional(int(Range.uniform(1, 100)));
+      const gen = Gen.optional(Gen.int(Range.uniform(1, 100)));
       const values: Array<number | undefined> = [];
 
       // Generate multiple values to test both cases
@@ -40,7 +31,7 @@ describe('Union generators', () => {
     });
 
     it('generates proper shrinks for undefined values', () => {
-      const gen = optional(int(Range.uniform(10, 20)));
+      const gen = Gen.optional(Gen.int(Range.uniform(10, 20)));
 
       // Try multiple times to get an undefined value
       let currentSeed = seed;
@@ -64,7 +55,7 @@ describe('Union generators', () => {
     });
 
     it('generates proper shrinks for defined values', () => {
-      const gen = optional(int(Range.uniform(10, 20)));
+      const gen = Gen.optional(Gen.int(Range.uniform(10, 20)));
 
       // Try multiple times to get a defined value
       let currentSeed = seed;
@@ -88,7 +79,7 @@ describe('Union generators', () => {
     });
 
     it('works with Gen.optional() static method', () => {
-      const gen = Gen.optional(string());
+      const gen = Gen.optional(Gen.string());
       const tree = gen.generate(size, seed);
 
       expect(tree.value === undefined || typeof tree.value === 'string').toBe(
@@ -97,9 +88,9 @@ describe('Union generators', () => {
     });
   });
 
-  describe('nullable()', () => {
+  describe('Gen.nullable()', () => {
     it('generates both null and defined values', () => {
-      const gen = nullable(bool());
+      const gen = Gen.nullable(Gen.bool());
       const values: Array<boolean | null> = [];
 
       // Generate multiple values to test both cases
@@ -120,7 +111,7 @@ describe('Union generators', () => {
     });
 
     it('generates proper shrinks for null values', () => {
-      const gen = nullable(int(Range.uniform(10, 20)));
+      const gen = Gen.nullable(Gen.int(Range.uniform(10, 20)));
 
       // Try multiple times to get a null value
       let currentSeed = seed;
@@ -144,16 +135,20 @@ describe('Union generators', () => {
     });
 
     it('works with Gen.nullable() static method', () => {
-      const gen = Gen.nullable(int(Range.uniform(1, 10)));
+      const gen = Gen.nullable(Gen.int(Range.uniform(1, 10)));
       const tree = gen.generate(size, seed);
 
       expect(tree.value === null || typeof tree.value === 'number').toBe(true);
     });
   });
 
-  describe('union()', () => {
+  describe('Gen.union()', () => {
     it('generates values from all provided generators', () => {
-      const gen = union(int(Range.uniform(1, 10)), string(), bool());
+      const gen = Gen.union(
+        Gen.int(Range.uniform(1, 10)),
+        Gen.string(),
+        Gen.bool()
+      );
 
       const values: Array<number | string | boolean> = [];
       let currentSeed = seed;
@@ -176,7 +171,10 @@ describe('Union generators', () => {
     });
 
     it('generates shrinks including other union alternatives', () => {
-      const gen = union(int(Range.uniform(50, 100)), Gen.constant('test'));
+      const gen = Gen.union(
+        Gen.int(Range.uniform(50, 100)),
+        Gen.constant('test')
+      );
 
       const tree = gen.generate(size, seed);
       expect(tree.hasShrinks()).toBe(true);
@@ -190,11 +188,13 @@ describe('Union generators', () => {
     });
 
     it('throws error for empty union', () => {
-      expect(() => union()).toThrow('union requires at least one generator');
+      expect(() => Gen.union()).toThrow(
+        'union requires at least one generator'
+      );
     });
 
     it('works with Gen.union() static method', () => {
-      const gen = Gen.union(bool(), int(Range.uniform(1, 5)));
+      const gen = Gen.union(Gen.bool(), Gen.int(Range.uniform(1, 5)));
       const tree = gen.generate(size, seed);
 
       expect(
@@ -203,7 +203,7 @@ describe('Union generators', () => {
     });
   });
 
-  describe('discriminatedUnion()', () => {
+  describe('Gen.discriminatedUnion()', () => {
     it('generates discriminated union variants', () => {
       interface Circle {
         type: 'circle';
@@ -215,17 +215,17 @@ describe('Union generators', () => {
         side: number;
       }
 
-      const circleGen = object({
+      const circleGen = Gen.object({
         type: Gen.constant('circle' as const),
-        radius: int(Range.uniform(1, 10)),
+        radius: Gen.int(Range.uniform(1, 10)),
       });
 
-      const squareGen = object({
+      const squareGen = Gen.object({
         type: Gen.constant('square' as const),
-        side: int(Range.uniform(1, 10)),
+        side: Gen.int(Range.uniform(1, 10)),
       });
 
-      const shapeGen = discriminatedUnion('type', {
+      const shapeGen = Gen.discriminatedUnion('type', {
         circle: circleGen,
         square: squareGen,
       });
@@ -258,19 +258,19 @@ describe('Union generators', () => {
     });
 
     it('throws error for empty variants', () => {
-      expect(() => discriminatedUnion('type', {})).toThrow(
+      expect(() => Gen.discriminatedUnion('type', {})).toThrow(
         'discriminatedUnion requires at least one variant'
       );
     });
 
     it('validates discriminator values at runtime', () => {
       // New API: discriminator values are keys, preventing collisions at compile time
-      const validGen = discriminatedUnion('type', {
-        admin: object({
+      const validGen = Gen.discriminatedUnion('type', {
+        admin: Gen.object({
           type: Gen.constant('admin'),
           role: Gen.constant('administrator'),
         }),
-        user: object({
+        user: Gen.object({
           type: Gen.constant('user'),
           department: Gen.constant('engineering'),
         }),
@@ -297,8 +297,8 @@ describe('Union generators', () => {
 
     it('throws error when generator produces wrong discriminator value', () => {
       // This should fail at runtime - generator produces wrong discriminator
-      const invalidGen = discriminatedUnion('type', {
-        circle: object({
+      const invalidGen = Gen.discriminatedUnion('type', {
+        circle: Gen.object({
           type: Gen.constant('wrong-value'), // Should be 'circle'
           radius: Gen.constant(5),
         }),
@@ -310,8 +310,8 @@ describe('Union generators', () => {
     });
 
     it('throws error when generator missing discriminator field', () => {
-      const invalidGen = discriminatedUnion('type', {
-        circle: object({
+      const invalidGen = Gen.discriminatedUnion('type', {
+        circle: Gen.object({
           // Missing 'type' field!
           radius: Gen.constant(5),
         }),
@@ -324,11 +324,14 @@ describe('Union generators', () => {
 
     it('works with Gen.discriminatedUnion() static method', () => {
       const gen = Gen.discriminatedUnion('kind', {
-        success: object({
+        success: Gen.object({
           kind: Gen.constant('success'),
-          value: int(Range.uniform(1, 10)),
+          value: Gen.int(Range.uniform(1, 10)),
         }),
-        error: object({ kind: Gen.constant('error'), message: string() }),
+        error: Gen.object({
+          kind: Gen.constant('error'),
+          message: Gen.string(),
+        }),
       });
 
       const tree = gen.generate(size, seed);
@@ -337,10 +340,10 @@ describe('Union generators', () => {
     });
   });
 
-  describe('weightedUnion()', () => {
+  describe('Gen.weightedUnion()', () => {
     it('respects weighted probabilities', () => {
       // Heavy weight on true, light weight on false
-      const gen = weightedUnion([
+      const gen = Gen.weightedUnion([
         [9, Gen.constant(true)],
         [1, Gen.constant(false)],
       ]);
@@ -365,8 +368,8 @@ describe('Union generators', () => {
     });
 
     it('generates shrinks including other weighted alternatives', () => {
-      const gen = weightedUnion([
-        [1, int(Range.uniform(50, 100))],
+      const gen = Gen.weightedUnion([
+        [1, Gen.int(Range.uniform(50, 100))],
         [1, Gen.constant('fallback')],
       ]);
 
@@ -382,13 +385,13 @@ describe('Union generators', () => {
     });
 
     it('throws error for empty choices', () => {
-      expect(() => weightedUnion([])).toThrow(
+      expect(() => Gen.weightedUnion([])).toThrow(
         'weightedUnion requires at least one choice'
       );
     });
 
     it('throws error for non-positive total weight', () => {
-      expect(() => weightedUnion([[0, Gen.constant(1)]])).toThrow(
+      expect(() => Gen.weightedUnion([[0, Gen.constant(1)]])).toThrow(
         'weightedUnion requires positive total weight'
       );
     });
@@ -406,8 +409,12 @@ describe('Union generators', () => {
 
   describe('complex nested unions', () => {
     it('handles nested optional and union types', () => {
-      const complexGen = optional(
-        union(int(Range.uniform(1, 100)), nullable(string()), bool())
+      const complexGen = Gen.optional(
+        Gen.union(
+          Gen.int(Range.uniform(1, 100)),
+          Gen.nullable(Gen.string()),
+          Gen.bool()
+        )
       );
 
       const tree = complexGen.generate(size, seed);
@@ -423,19 +430,19 @@ describe('Union generators', () => {
     });
 
     it('handles unions of complex objects', () => {
-      const userGen = object({
+      const userGen = Gen.object({
         type: Gen.constant('user'),
-        name: string(),
-        age: int(Range.uniform(0, 100)),
+        name: Gen.string(),
+        age: Gen.int(Range.uniform(0, 100)),
       });
 
-      const adminGen = object({
+      const adminGen = Gen.object({
         type: Gen.constant('admin'),
-        name: string(),
+        name: Gen.string(),
         permissions: Gen.constant(['read', 'write']),
       });
 
-      const personGen = union(userGen, adminGen);
+      const personGen = Gen.union(userGen, adminGen);
       const tree = personGen.generate(size, seed);
 
       expect(tree.value).toHaveProperty('type');

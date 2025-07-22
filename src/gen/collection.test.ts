@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { Gen } from '../gen.js';
-import { array, arrayOfLength, object, tuple } from './collection.js';
-import { bool, int, string } from './primitive.js';
 import { Range } from '../data/size.js';
 import { Size } from '../data/size.js';
 import { Seed } from '../seed/bigint.js';
@@ -10,9 +8,9 @@ describe('Collection generators', () => {
   const seed = Seed.fromNumber(42);
   const size = Size.of(10);
 
-  describe('array()', () => {
+  describe('Gen.array()', () => {
     it('generates arrays within size bounds', () => {
-      const gen = array(int(Range.uniform(1, 100)));
+      const gen = Gen.array(Gen.int(Range.uniform(1, 100)));
       const tree = gen.generate(size, seed);
 
       expect(Array.isArray(tree.value)).toBe(true);
@@ -21,28 +19,28 @@ describe('Collection generators', () => {
     });
 
     it('respects minLength option', () => {
-      const gen = array(bool(), { minLength: 5 });
+      const gen = Gen.array(Gen.bool(), { minLength: 5 });
       const tree = gen.generate(size, seed);
 
       expect(tree.value.length).toBeGreaterThanOrEqual(5);
     });
 
     it('respects maxLength option', () => {
-      const gen = array(bool(), { maxLength: 3 });
+      const gen = Gen.array(Gen.bool(), { maxLength: 3 });
       const tree = gen.generate(size, seed);
 
       expect(tree.value.length).toBeLessThanOrEqual(3);
     });
 
     it('respects exact length option', () => {
-      const gen = array(bool(), { length: 7 });
+      const gen = Gen.array(Gen.bool(), { length: 7 });
       const tree = gen.generate(size, seed);
 
       expect(tree.value.length).toBe(7);
     });
 
     it('generates proper shrinks by reducing length', () => {
-      const gen = array(bool(), { length: 3 });
+      const gen = Gen.array(Gen.bool(), { length: 3 });
       const tree = gen.generate(size, seed);
 
       expect(tree.hasShrinks()).toBe(true);
@@ -56,7 +54,7 @@ describe('Collection generators', () => {
     });
 
     it('generates shrinks for individual elements', () => {
-      const gen = array(int(Range.uniform(10, 20)), { length: 2 });
+      const gen = Gen.array(Gen.int(Range.uniform(10, 20)), { length: 2 });
       const tree = gen.generate(size, seed);
 
       expect(tree.hasShrinks()).toBe(true);
@@ -68,7 +66,7 @@ describe('Collection generators', () => {
     });
 
     it('works with Gen.array() static method', () => {
-      const gen = Gen.array(string(), { maxLength: 5 });
+      const gen = Gen.array(Gen.string(), { maxLength: 5 });
       const tree = gen.generate(size, seed);
 
       expect(Array.isArray(tree.value)).toBe(true);
@@ -76,9 +74,9 @@ describe('Collection generators', () => {
     });
   });
 
-  describe('arrayOfLength()', () => {
+  describe('Gen.arrayOfLength()', () => {
     it('generates arrays of exact length', () => {
-      const gen = arrayOfLength(bool(), 5);
+      const gen = Gen.arrayOfLength(Gen.bool(), 5);
       const tree = gen.generate(size, seed);
 
       expect(tree.value.length).toBe(5);
@@ -86,7 +84,7 @@ describe('Collection generators', () => {
     });
 
     it('generates empty arrays for length 0', () => {
-      const gen = arrayOfLength(int(Range.uniform(1, 10)), 0);
+      const gen = Gen.arrayOfLength(Gen.int(Range.uniform(1, 10)), 0);
       const tree = gen.generate(size, seed);
 
       expect(tree.value).toEqual([]);
@@ -94,22 +92,22 @@ describe('Collection generators', () => {
     });
 
     it('works with Gen.arrayOfLength() static method', () => {
-      const gen = Gen.arrayOfLength(string(), 3);
+      const gen = Gen.arrayOfLength(Gen.string(), 3);
       const tree = gen.generate(size, seed);
 
       expect(tree.value.length).toBe(3);
     });
   });
 
-  describe('object()', () => {
+  describe('Gen.object()', () => {
     it('generates objects with correct properties', () => {
       const schema = {
-        name: string(),
-        age: int(Range.uniform(0, 100)),
-        active: bool(),
+        name: Gen.string(),
+        age: Gen.int(Range.uniform(0, 100)),
+        active: Gen.bool(),
       };
 
-      const gen = object(schema);
+      const gen = Gen.object(schema);
       const tree = gen.generate(size, seed);
 
       expect(typeof tree.value).toBe('object');
@@ -123,7 +121,7 @@ describe('Collection generators', () => {
     });
 
     it('generates empty objects for empty schema', () => {
-      const gen = object({});
+      const gen = Gen.object({});
       const tree = gen.generate(size, seed);
 
       expect(tree.value).toEqual({});
@@ -131,11 +129,11 @@ describe('Collection generators', () => {
 
     it('generates shrinks for individual properties', () => {
       const schema = {
-        count: int(Range.uniform(5, 15)),
-        flag: bool(),
+        count: Gen.int(Range.uniform(5, 15)),
+        flag: Gen.bool(),
       };
 
-      const gen = object(schema);
+      const gen = Gen.object(schema);
       const tree = gen.generate(size, seed);
 
       if (tree.hasShrinks()) {
@@ -158,12 +156,12 @@ describe('Collection generators', () => {
       }
 
       const userSchema = {
-        id: int(Range.uniform(1, 1000)),
-        name: string(),
-        email: string(),
+        id: Gen.int(Range.uniform(1, 1000)),
+        name: Gen.string(),
+        email: Gen.string(),
       };
 
-      const gen: Gen<User> = object(userSchema);
+      const gen: Gen<User> = Gen.object(userSchema);
       const tree = gen.generate(size, seed);
 
       // TypeScript should infer this correctly
@@ -175,8 +173,8 @@ describe('Collection generators', () => {
 
     it('works with Gen.object() static method', () => {
       const gen = Gen.object({
-        x: int(Range.uniform(1, 10)),
-        y: bool(),
+        x: Gen.int(Range.uniform(1, 10)),
+        y: Gen.bool(),
       });
 
       const tree = gen.generate(size, seed);
@@ -185,9 +183,13 @@ describe('Collection generators', () => {
     });
   });
 
-  describe('tuple()', () => {
+  describe('Gen.tuple()', () => {
     it('generates tuples with correct types', () => {
-      const gen = tuple(string(), int(Range.uniform(1, 100)), bool());
+      const gen = Gen.tuple(
+        Gen.string(),
+        Gen.int(Range.uniform(1, 100)),
+        Gen.bool()
+      );
 
       const tree = gen.generate(size, seed);
 
@@ -199,14 +201,14 @@ describe('Collection generators', () => {
     });
 
     it('generates empty tuples for no generators', () => {
-      const gen = tuple();
+      const gen = Gen.tuple();
       const tree = gen.generate(size, seed);
 
       expect(tree.value).toEqual([]);
     });
 
     it('generates shrinks for individual elements', () => {
-      const gen = tuple(int(Range.uniform(10, 20)), bool());
+      const gen = Gen.tuple(Gen.int(Range.uniform(10, 20)), Gen.bool());
 
       const tree = gen.generate(size, seed);
 
@@ -222,7 +224,11 @@ describe('Collection generators', () => {
     });
 
     it('preserves tuple type information', () => {
-      const gen = tuple(string(), int(Range.uniform(1, 10)), bool());
+      const gen = Gen.tuple(
+        Gen.string(),
+        Gen.int(Range.uniform(1, 10)),
+        Gen.bool()
+      );
       type Expected = [string, number, boolean];
 
       const tree = gen.generate(size, seed);
@@ -234,7 +240,7 @@ describe('Collection generators', () => {
     });
 
     it('works with Gen.tuple() static method', () => {
-      const gen = Gen.tuple(bool(), string());
+      const gen = Gen.tuple(Gen.bool(), Gen.string());
       const tree = gen.generate(size, seed);
 
       expect(tree.value.length).toBe(2);
@@ -246,20 +252,20 @@ describe('Collection generators', () => {
   describe('complex nested structures', () => {
     it('generates nested arrays and objects', () => {
       const schema = {
-        users: array(
-          object({
-            id: int(Range.uniform(1, 1000)),
-            active: bool(),
+        users: Gen.array(
+          Gen.object({
+            id: Gen.int(Range.uniform(1, 1000)),
+            active: Gen.bool(),
           }),
           { maxLength: 3 }
         ),
-        metadata: object({
-          version: string(),
-          tags: array(string(), { maxLength: 2 }),
+        metadata: Gen.object({
+          version: Gen.string(),
+          tags: Gen.array(Gen.string(), { maxLength: 2 }),
         }),
       };
 
-      const gen = object(schema);
+      const gen = Gen.object(schema);
       const tree = gen.generate(size, seed);
 
       expect(Array.isArray(tree.value.users)).toBe(true);
@@ -275,10 +281,10 @@ describe('Collection generators', () => {
     });
 
     it('generates tuples containing objects and arrays', () => {
-      const gen = tuple(
-        object({ name: string(), age: int(Range.uniform(0, 100)) }),
-        array(bool(), { maxLength: 5 }),
-        string()
+      const gen = Gen.tuple(
+        Gen.object({ name: Gen.string(), age: Gen.int(Range.uniform(0, 100)) }),
+        Gen.array(Gen.bool(), { maxLength: 5 }),
+        Gen.string()
       );
 
       const tree = gen.generate(size, seed);

@@ -3,7 +3,6 @@ import { Gen } from './gen';
 import { Tree } from './data/tree';
 import { Size, Range } from './data/size';
 import { Seed } from './data/seed';
-import { bool, int, string } from './gen/primitive';
 import { Property, forAll } from './property';
 import { TestResult, PassResult, FailResult } from './result';
 
@@ -31,9 +30,9 @@ describe('Type Safety', () => {
   });
 
   test('primitive generator types', () => {
-    expectTypeOf(bool()).toEqualTypeOf<Gen<boolean>>();
-    expectTypeOf(int(Range.uniform(1, 10))).toEqualTypeOf<Gen<number>>();
-    expectTypeOf(string()).toEqualTypeOf<Gen<string>>();
+    expectTypeOf(Gen.bool()).toEqualTypeOf<Gen<boolean>>();
+    expectTypeOf(Gen.int(Range.uniform(1, 10))).toEqualTypeOf<Gen<number>>();
+    expectTypeOf(Gen.string()).toEqualTypeOf<Gen<string>>();
   });
 
   test('Gen combinator types', () => {
@@ -55,15 +54,15 @@ describe('Type Safety', () => {
   });
 
   test('Property type inference', () => {
-    const prop = forAll(int(Range.uniform(1, 100)), (n) => n > 0);
+    const prop = forAll(Gen.int(Range.uniform(1, 100)), (n) => n > 0);
     expectTypeOf(prop).toEqualTypeOf<Property<number>>();
 
-    const stringProp = forAll(string(), (s) => s.length >= 0);
+    const stringProp = forAll(Gen.string(), (s) => s.length >= 0);
     expectTypeOf(stringProp).toEqualTypeOf<Property<string>>();
   });
 
   test('TestResult type safety', () => {
-    const prop = forAll(bool(), (b) => typeof b === 'boolean');
+    const prop = forAll(Gen.bool(), (b) => typeof b === 'boolean');
     const result = prop.run();
 
     expectTypeOf(result).toEqualTypeOf<TestResult<boolean>>();
@@ -110,13 +109,13 @@ describe('Type Safety', () => {
   });
 
   test('Gen filter preserves type', () => {
-    const gen = int(Range.uniform(1, 100));
+    const gen = Gen.int(Range.uniform(1, 100));
     const filtered = gen.filter((n) => n % 2 === 0);
     expectTypeOf(filtered).toEqualTypeOf<Gen<number>>();
   });
 
   test('nested generator types', () => {
-    const nestedGen = Gen.array(Gen.array(int(Range.uniform(1, 10))));
+    const nestedGen = Gen.array(Gen.array(Gen.int(Range.uniform(1, 10))));
     expectTypeOf(nestedGen).toEqualTypeOf<Gen<number[][]>>();
 
     const complexGen = Gen.oneOf([
@@ -128,8 +127,8 @@ describe('Type Safety', () => {
   });
 
   test('property combinators preserve types', () => {
-    const numProp = forAll(int(Range.uniform(1, 100)), (n) => n > 0);
-    const stringProp = forAll(string(), (s) => s.length >= 0);
+    const numProp = forAll(Gen.int(Range.uniform(1, 100)), (n) => n > 0);
+    const stringProp = forAll(Gen.string(), (s) => s.length >= 0);
 
     expectTypeOf(numProp).toEqualTypeOf<Property<number>>();
     expectTypeOf(stringProp).toEqualTypeOf<Property<string>>();

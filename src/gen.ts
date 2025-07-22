@@ -1,13 +1,23 @@
-import { Seed } from './data/seed';
-import { Size } from './data/size';
-import { Tree } from './data/tree';
+// Public interface for the Hedgehog generator library
+import { GeneratorFn } from './gen/core.js';
+import { Size } from './data/size.js';
+import { Seed } from './data/seed.js';
+import { Tree } from './data/tree.js';
+
+// Import generator functions
 import {
-  array,
-  arrayOfLength,
-  object,
-  tuple,
-  ArrayOptions,
-} from './gen/collection.js';
+  bool,
+  int,
+  string,
+  stringOfLength,
+  number,
+  date,
+  enumValue,
+  literal,
+  Ints as PrimitiveInts,
+  Strings as PrimitiveStrings,
+} from './gen/primitive.js';
+import { array, arrayOfLength, object, tuple } from './gen/collection.js';
 import {
   optional,
   nullable,
@@ -16,112 +26,126 @@ import {
   weightedUnion,
 } from './gen/union.js';
 
-// Re-export collection generators
-export { array, arrayOfLength, object, tuple, ArrayOptions };
-
-// Re-export union generators
-export { optional, nullable, union, discriminatedUnion, weightedUnion };
-
 /**
- * A generator for test data of type `T`.
- *
- * Generators are explicit, first-class values that can be composed
- * using combinator functions. This is a key difference from
- * type-directed approaches like QuickCheck.
+ * Main Generator class - the public interface for property-based testing.
  */
 export class Gen<T> {
-  constructor(
-    private readonly generator: (size: Size, seed: Seed) => Tree<T>
-  ) {}
+  constructor(public readonly generator: GeneratorFn<T>) {}
 
-  /**
-   * Create a new generator from a function.
-   */
-  static create<T>(f: (size: Size, seed: Seed) => Tree<T>): Gen<T> {
-    return new Gen(f);
-  }
-
-  /**
-   * Generate a value using the given size and seed.
-   */
   generate(size: Size, seed: Seed): Tree<T> {
     return this.generator(size, seed);
   }
 
-  /**
-   * Create a generator that always produces the same value.
-   */
+  map<U>(fn: (value: T) => U): Gen<U> {
+    return Gen.create((size, seed) => {
+      const tree = this.generate(size, seed);
+      return tree.map(fn);
+    });
+  }
+
+  chain<U>(fn: (value: T) => Gen<U>): Gen<U> {
+    return Gen.create((size, seed) => {
+      const tree = this.generate(size, seed);
+      const [, rightSeed] = seed.split();
+
+      return tree.bind((value: T) => {
+        const nextGen = fn(value);
+        return nextGen.generate(size, rightSeed);
+      });
+    });
+  }
+
+  filter(predicate: (value: T) => boolean, maxRetries = 100): Gen<T> {
+    return Gen.create((size, seed) => {
+      let currentSeed = seed;
+
+      for (let i = 0; i < maxRetries; i++) {
+        const tree = this.generate(size, currentSeed);
+        if (predicate(tree.value)) {
+          const filteredShrinks = tree
+            .shrinks()
+            .filter((value) => predicate(value))
+            .map((value) => Tree.singleton(value));
+          return Tree.withChildren(tree.value, filteredShrinks);
+        }
+
+        const [, newSeed] = currentSeed.split();
+        currentSeed = newSeed;
+      }
+
+      throw new Error(
+        `Failed to generate value satisfying predicate after ${maxRetries} attempts`
+      );
+    });
+  }
+
+  resize(fn: (size: Size) => Size): Gen<T> {
+    return Gen.create((size, seed) => {
+      const newSize = fn(size);
+      return this.generate(newSize, seed);
+    });
+  }
+
+  scale(fn: (size: Size) => Size): Gen<T> {
+    return this.resize(fn);
+  }
+
+  bind<U>(fn: (value: T) => Gen<U>): Gen<U> {
+    return this.chain(fn);
+  }
+
+  withSize(size: number): Gen<T> {
+    return this.resize(() => Size.of(size));
+  }
+
+  sample(seed?: Seed, size?: Size): T {
+    const actualSeed = seed ?? Seed.random();
+    const actualSize = size ?? Size.of(10);
+    const tree = this.generate(actualSize, actualSeed);
+    return tree.value;
+  }
+
+  samples(count: number, seed?: Seed, size?: Size): T[] {
+    let currentSeed = seed ?? Seed.random();
+    const actualSize = size ?? Size.of(10);
+    const results: T[] = [];
+
+    for (let i = 0; i < count; i++) {
+      const tree = this.generate(actualSize, currentSeed);
+      results.push(tree.value);
+
+      const [, newSeed] = currentSeed.split();
+      currentSeed = newSeed;
+    }
+
+    return results;
+  }
+  // Core static methods
+  static create<T>(fn: GeneratorFn<T>): Gen<T> {
+    return new Gen(fn);
+  }
+
+  static sized<T>(fn: (size: Size) => Gen<T>): Gen<T> {
+    return new Gen((size, seed) => fn(size).generate(size, seed));
+  }
+
   static constant<T extends string | number | boolean | symbol>(
     value: T
   ): Gen<T> {
     return new Gen(() => Tree.singleton(value));
   }
 
-  /**
-   * Map a function over the generated values.
-   */
-  map<U>(f: (value: T) => U): Gen<U> {
-    return new Gen((size, seed) => {
-      const tree = this.generate(size, seed);
-      return tree.map(f);
-    });
-  }
-
-  /**
-   * Filter generated values, keeping only those that satisfy the predicate.
-   */
-  filter(predicate: (value: T) => boolean): Gen<T> {
-    return new Gen((size, seed) => {
-      let attempts = 0;
-      const maxAttempts = 100;
-      let currentSeed = seed;
-
-      while (attempts < maxAttempts) {
-        const tree = this.generate(size, currentSeed);
-        const filtered = tree.filter(predicate);
-
-        if (filtered !== null) {
-          return filtered;
-        }
-
-        const [, newSeed] = currentSeed.split();
-        currentSeed = newSeed;
-        attempts++;
-      }
-
-      throw new Error(
-        `Failed to generate value satisfying predicate after ${maxAttempts} attempts`
-      );
-    });
-  }
-
-  /**
-   * Monadic bind operation for generators.
-   */
-  bind<U>(f: (value: T) => Gen<U>): Gen<U> {
-    return new Gen((size, seed) => {
-      const tree = this.generate(size, seed);
-      return tree.bind((value) => f(value).generate(size, seed));
-    });
-  }
-
-  /**
-   * Choose one of the given generators with equal probability.
-   */
   static oneOf<T>(generators: Gen<T>[]): Gen<T> {
     if (generators.length === 0) {
       throw new Error('oneOf requires at least one generator');
     }
 
     return new Gen((size, seed) => {
-      const [index, newSeed] = seed.nextBounded(generators.length);
-      return generators[index].generate(size, newSeed);
+      const [index] = seed.nextBounded(generators.length);
+      return generators[index].generate(size, seed);
     });
   }
 
-  /**
-   * Choose one of the given generators with weighted probability.
-   */
   static frequency<T>(choices: Array<[number, Gen<T>]>): Gen<T> {
     if (choices.length === 0) {
       throw new Error('frequency requires at least one choice');
@@ -133,100 +157,125 @@ export class Gen<T> {
     }
 
     return new Gen((size, seed) => {
-      const [random, newSeed] = seed.nextBounded(totalWeight);
-      let currentWeight = 0;
+      const [randomValue] = seed.nextFloat();
+      const target = randomValue * totalWeight;
 
-      for (const [weight, generator] of choices) {
+      let currentWeight = 0;
+      for (const [weight, gen] of choices) {
         currentWeight += weight;
-        if (random < currentWeight) {
-          return generator.generate(size, newSeed);
+        if (target <= currentWeight) {
+          return gen.generate(size, seed);
         }
       }
 
-      return choices[choices.length - 1][1].generate(size, newSeed);
+      // Fallback to last generator
+      return choices[choices.length - 1][1].generate(size, seed);
     });
   }
 
-  /**
-   * Create a generator that chooses between two generators based on size.
-   * For small sizes, use the first generator; for larger sizes, use the second.
-   */
-  static sized<T>(f: (size: Size) => Gen<T>): Gen<T> {
-    return new Gen((size, seed) => {
-      const gen = f(size);
-      return gen.generate(size, seed);
-    });
+  // Basic primitive generators
+  static bool(): Gen<boolean> {
+    const generatorFn = bool();
+    return new Gen(generatorFn);
   }
 
-  /**
-   * Scale the size parameter for this generator.
-   */
-  scale(f: (size: Size) => Size): Gen<T> {
-    return new Gen((size, seed) => {
-      const newSize = f(size);
-      return this.generate(newSize, seed);
-    });
+  static int(range: any): Gen<number> {
+    const generatorFn = int(range);
+    return new Gen(generatorFn);
   }
 
-  /**
-   * Generate arrays with configurable length and element shrinking.
-   */
-  static array<T>(elementGen: Gen<T>, options?: ArrayOptions): Gen<T[]> {
-    return array(elementGen, options);
+  static string(): Gen<string> {
+    const generatorFn = string();
+    return new Gen(generatorFn);
   }
 
-  /**
-   * Generate arrays of exactly the specified length.
-   */
-  static arrayOfLength<T>(elementGen: Gen<T>, length: number): Gen<T[]> {
-    return arrayOfLength(elementGen, length);
+  static stringOfLength(length: number): Gen<string> {
+    const generatorFn = stringOfLength(length);
+    return new Gen(generatorFn);
   }
 
-  /**
-   * Generate objects with typed properties.
-   */
-  static object<T extends Record<string, unknown>>(schema: {
+  // Extended primitive generators
+  static number(options?: {
+    min?: number;
+    max?: number;
+    multipleOf?: number;
+    finite?: boolean;
+    safe?: boolean;
+  }): Gen<number> {
+    const generatorFn = number(options);
+    return new Gen(generatorFn);
+  }
+
+  static date(options?: { min?: Date; max?: Date }): Gen<Date> {
+    const generatorFn = date(options);
+    return new Gen(generatorFn);
+  }
+
+  static enum<T extends readonly [string, ...string[]]>(
+    values: T
+  ): Gen<T[number]> {
+    const generatorFn = enumValue(values);
+    return new Gen(generatorFn);
+  }
+
+  static literal<T extends string | number | boolean>(value: T): Gen<T> {
+    const generatorFn = literal(value);
+    return new Gen(generatorFn);
+  }
+
+  // Collection generators
+  static array<T>(gen: Gen<T>, options?: any): Gen<T[]> {
+    const generatorFn = array(gen.generator, options);
+    return new Gen(generatorFn);
+  }
+
+  static arrayOfLength<T>(gen: Gen<T>, length: number): Gen<T[]> {
+    const generatorFn = arrayOfLength(gen.generator, length);
+    return new Gen(generatorFn);
+  }
+
+  static object<T extends Record<string, unknown>>(generators: {
     [K in keyof T]: Gen<T[K]>;
   }): Gen<T> {
-    return object(schema);
+    const generatorFns: { [K in keyof T]: GeneratorFn<T[K]> } = {} as any;
+    for (const key in generators) {
+      generatorFns[key] = generators[key].generator;
+    }
+    const generatorFn = object(generatorFns);
+    return new Gen(generatorFn);
   }
 
-  /**
-   * Generate fixed-length heterogeneous tuples.
-   */
   static tuple<T extends readonly unknown[]>(
     ...generators: { [K in keyof T]: Gen<T[K]> }
   ): Gen<T> {
-    return tuple<T>(...generators);
+    const generatorFns = generators.map((gen) => gen.generator) as {
+      [K in keyof T]: GeneratorFn<T[K]>;
+    };
+    const generatorFn = tuple<T>(...generatorFns);
+    return new Gen(generatorFn);
   }
 
-  /**
-   * Generate optional values (T | undefined).
-   */
+  // Union generators
   static optional<T>(gen: Gen<T>): Gen<T | undefined> {
-    return optional(gen);
+    const generatorFn = optional(gen.generator);
+    return new Gen(generatorFn);
   }
 
-  /**
-   * Generate nullable values (T | null).
-   */
   static nullable<T>(gen: Gen<T>): Gen<T | null> {
-    return nullable(gen);
+    const generatorFn = nullable(gen.generator);
+    return new Gen(generatorFn);
   }
 
-  /**
-   * Generate union types from multiple generators.
-   */
   static union<T extends readonly unknown[]>(
     ...generators: { [K in keyof T]: Gen<T[K]> }
   ): Gen<T[number]> {
-    return union(...generators);
+    const generatorFns = generators.map((gen) => gen.generator) as {
+      [K in keyof T]: GeneratorFn<T[K]>;
+    };
+    const generatorFn = union(...generatorFns);
+    return new Gen(generatorFn);
   }
 
-  /**
-   * Generate discriminated unions based on a discriminator field.
-   * Discriminator values are the keys in the variants object, preventing collisions.
-   */
   static discriminatedUnion<
     K extends string,
     T extends Record<string, unknown>,
@@ -234,13 +283,53 @@ export class Gen<T> {
     discriminatorKey: K,
     variants: Record<string, Gen<T & Record<K, string>>>
   ): Gen<T & Record<K, string>> {
-    return discriminatedUnion(discriminatorKey, variants);
+    const generatorFns: Record<string, GeneratorFn<T & Record<K, string>>> = {};
+    for (const key in variants) {
+      generatorFns[key] = variants[key].generator;
+    }
+    const generatorFn = discriminatedUnion(discriminatorKey, generatorFns);
+    return new Gen(generatorFn);
   }
 
-  /**
-   * Generate union types with weighted probabilities.
-   */
   static weightedUnion<T>(choices: Array<[number, Gen<T>]>): Gen<T> {
-    return weightedUnion(choices);
+    const generatorFnChoices = choices.map(
+      ([weight, gen]) => [weight, gen.generator] as [number, GeneratorFn<T>]
+    );
+    const generatorFn = weightedUnion(generatorFnChoices);
+    return new Gen(generatorFn);
   }
 }
+
+// Re-export types and all generator functions
+export type { GeneratorFn } from './gen/core.js';
+export * from './gen/primitive.js';
+export * from './gen/collection.js';
+export * from './gen/union.js';
+
+// Convenience generator objects that return Gen<T> instead of GeneratorFn<T>
+export const Ints = {
+  /** Small positive integers [0, 100] */
+  small: (): Gen<number> => new Gen(PrimitiveInts.small()),
+
+  /** Any positive integer [0, Number.MAX_SAFE_INTEGER] */
+  positive: (): Gen<number> => new Gen(PrimitiveInts.positive()),
+
+  /** Any integer [Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER] */
+  any: (): Gen<number> => new Gen(PrimitiveInts.any()),
+
+  /** Integers in a specific range */
+  range: (min: number, max: number): Gen<number> =>
+    new Gen(PrimitiveInts.range(min, max)),
+} as const;
+
+export const Strings = {
+  /** ASCII strings of any length */
+  ascii: (): Gen<string> => new Gen(PrimitiveStrings.ascii()),
+
+  /** ASCII strings of specific length */
+  asciiOfLength: (length: number): Gen<string> =>
+    new Gen(PrimitiveStrings.asciiOfLength(length)),
+
+  /** Alphabetic strings (a-z, A-Z) */
+  alpha: (): Gen<string> => new Gen(PrimitiveStrings.alpha()),
+} as const;

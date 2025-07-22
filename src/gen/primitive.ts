@@ -1,4 +1,4 @@
-import { Gen } from '../gen';
+import { GeneratorFn, create, sized, constant, frequency } from './core.js';
 import { Range } from '../data/size';
 import { Tree } from '../data/tree';
 import { Seed } from '../data/seed';
@@ -10,8 +10,8 @@ import { Seed } from '../data/seed';
 /**
  * Generate a boolean value.
  */
-export function bool(): Gen<boolean> {
-  return Gen.create((_size, seed) => {
+export function bool(): GeneratorFn<boolean> {
+  return create((_size, seed) => {
     const [value] = seed.nextBool();
     const children = [Tree.singleton(!value)]; // Shrink to opposite
     return Tree.withChildren(value, children);
@@ -21,8 +21,8 @@ export function bool(): Gen<boolean> {
 /**
  * Generate an integer within a range with integrated shrinking.
  */
-export function int(range: Range<number>): Gen<number> {
-  return Gen.create((_size, seed) => {
+export function int(range: Range<number>): GeneratorFn<number> {
+  return create((_size, seed) => {
     const rangeSize = Math.max(1, range.max - range.min + 1);
     const [offset] = seed.nextBounded(rangeSize);
     const value = range.min + offset;
@@ -82,10 +82,10 @@ function generateIntShrinks(
 /**
  * Generate a string of ASCII characters.
  */
-export function string(): Gen<string> {
-  return Gen.sized((size) => {
+export function string(): GeneratorFn<string> {
+  return sized((size) => {
     const maxLength = size.get();
-    return Gen.create((_, seed) => {
+    return create((_, seed) => {
       const [length, newSeed] = seed.nextBounded(maxLength + 1);
       return generateStringOfLength(length, newSeed);
     });
@@ -95,8 +95,8 @@ export function string(): Gen<string> {
 /**
  * Generate a string of exactly the specified length.
  */
-export function stringOfLength(length: number): Gen<string> {
-  return Gen.create((_size, seed) => {
+export function stringOfLength(length: number): GeneratorFn<string> {
+  return create((_size, seed) => {
     return generateStringOfLength(length, seed);
   });
 }
@@ -186,13 +186,14 @@ function generateCharShrinks(char: string): Tree<string>[] {
  */
 export const Ints = {
   /** Small positive integers [0, 100] */
-  small: () => int(Range.uniform(0, 100).withOrigin(0)),
+  small: (): GeneratorFn<number> => int(Range.uniform(0, 100).withOrigin(0)),
 
   /** Any positive integer [0, Number.MAX_SAFE_INTEGER] */
-  positive: () => int(Range.linear(0, Number.MAX_SAFE_INTEGER).withOrigin(0)),
+  positive: (): GeneratorFn<number> =>
+    int(Range.linear(0, Number.MAX_SAFE_INTEGER).withOrigin(0)),
 
   /** Any integer [Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER] */
-  any: () =>
+  any: (): GeneratorFn<number> =>
     int(
       Range.linear(Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER).withOrigin(
         0
@@ -200,7 +201,7 @@ export const Ints = {
     ),
 
   /** Integers in a specific range */
-  range: (min: number, max: number) =>
+  range: (min: number, max: number): GeneratorFn<number> =>
     int(Range.uniform(min, max).withOrigin(0)),
 } as const;
 
@@ -209,16 +210,17 @@ export const Ints = {
  */
 export const Strings = {
   /** ASCII strings of any length */
-  ascii: () => string(),
+  ascii: (): GeneratorFn<string> => string(),
 
   /** ASCII strings of specific length */
-  asciiOfLength: (length: number) => stringOfLength(length),
+  asciiOfLength: (length: number): GeneratorFn<string> =>
+    stringOfLength(length),
 
   /** Alphabetic strings (a-z, A-Z) */
-  alpha: () =>
-    Gen.sized((size) => {
+  alpha: (): GeneratorFn<string> =>
+    sized((size) => {
       const maxLength = size.get();
-      return Gen.create((_, seed) => {
+      return create((_, seed) => {
         const [length, newSeed] = seed.nextBounded(maxLength + 1);
         return generateAlphaString(length, newSeed);
       });
@@ -255,4 +257,224 @@ function generateAlphaString(length: number, seed: Seed): Tree<string> {
   }
 
   return Tree.withChildren(fullString, shrinks);
+}
+
+/**
+ * Enhanced number generation with constraints.
+ */
+export function number(options?: {
+  min?: number;
+  max?: number;
+  multipleOf?: number;
+  finite?: boolean;
+  safe?: boolean;
+}): GeneratorFn<number> {
+  const opts = {
+    min: Number.MIN_SAFE_INTEGER,
+    max: Number.MAX_SAFE_INTEGER,
+    finite: true,
+    safe: true,
+    ...options,
+  };
+
+  // Handle special values first
+  if (!opts.finite) {
+    return frequency([
+      [8, finiteNumber(opts)], // 80% finite numbers
+      [1, constant(Infinity)], // 10% Infinity
+      [1, constant(-Infinity)], // 10% -Infinity
+    ]);
+  }
+
+  return finiteNumber(opts);
+}
+
+/**
+ * Generate finite numbers within constraints.
+ */
+function finiteNumber(opts: {
+  min: number;
+  max: number;
+  multipleOf?: number;
+  safe: boolean;
+}): GeneratorFn<number> {
+  return create((_size, seed) => {
+    let min = opts.min;
+    let max = opts.max;
+
+    // Apply safe number constraints
+    if (opts.safe) {
+      min = Math.max(min, Number.MIN_SAFE_INTEGER);
+      max = Math.min(max, Number.MAX_SAFE_INTEGER);
+    }
+
+    // Generate base number
+    const range = max - min;
+    const [fraction] = seed.nextFloat();
+    let value = min + fraction * range;
+
+    // Apply multipleOf constraint
+    if (opts.multipleOf !== undefined && opts.multipleOf > 0) {
+      value = Math.round(value / opts.multipleOf) * opts.multipleOf;
+      // Ensure still within bounds
+      value = Math.max(min, Math.min(max, value));
+    }
+
+    // Generate shrinks towards 0 (or closest valid value)
+    const origin = Math.max(min, Math.min(max, 0));
+    const shrinks = generateNumberShrinks(
+      value,
+      origin,
+      min,
+      max,
+      opts.multipleOf
+    );
+
+    return Tree.withChildren(value, shrinks);
+  });
+}
+
+/**
+ * Generate shrinks for number values.
+ */
+function generateNumberShrinks(
+  value: number,
+  origin: number,
+  min: number,
+  max: number,
+  multipleOf?: number
+): Tree<number>[] {
+  if (value === origin) {
+    return [];
+  }
+
+  const shrinks: Tree<number>[] = [];
+
+  // Shrink towards origin
+  let candidate =
+    value > origin
+      ? Math.floor((value + origin) / 2)
+      : Math.ceil((value + origin) / 2);
+
+  // Apply multipleOf constraint if present
+  if (multipleOf !== undefined && multipleOf > 0) {
+    candidate = Math.round(candidate / multipleOf) * multipleOf;
+  }
+
+  // Ensure within bounds and different from current value
+  if (candidate !== value && candidate >= min && candidate <= max) {
+    const childShrinks = generateNumberShrinks(
+      candidate,
+      origin,
+      min,
+      max,
+      multipleOf
+    );
+    shrinks.push(Tree.withChildren(candidate, childShrinks));
+  }
+
+  // Try origin directly if valid
+  if (origin !== value && origin >= min && origin <= max) {
+    if (
+      multipleOf === undefined ||
+      multipleOf <= 0 ||
+      origin % multipleOf === 0
+    ) {
+      shrinks.push(Tree.singleton(origin));
+    }
+  }
+
+  return shrinks;
+}
+
+/**
+ * Generate Date objects within a range.
+ */
+export function date(options?: { min?: Date; max?: Date }): GeneratorFn<Date> {
+  const now = new Date();
+  const opts = {
+    min: new Date(1970, 0, 1), // Unix epoch
+    max: new Date(now.getFullYear() + 10, 11, 31), // 10 years from now
+    ...options,
+  };
+
+  return create((_size, seed) => {
+    const minTime = opts.min.getTime();
+    const maxTime = opts.max.getTime();
+    const range = maxTime - minTime;
+
+    const [fraction] = seed.nextFloat();
+    const timestamp = minTime + fraction * range;
+    const value = new Date(timestamp);
+
+    // Generate shrinks towards epoch or min date
+    const origin = opts.min;
+    const shrinks = generateDateShrinks(value, origin, opts.min, opts.max);
+
+    return Tree.withChildren(value, shrinks);
+  });
+}
+
+/**
+ * Generate shrinks for Date values.
+ */
+function generateDateShrinks(
+  value: Date,
+  origin: Date,
+  min: Date,
+  max: Date
+): Tree<Date>[] {
+  const valueTime = value.getTime();
+  const originTime = origin.getTime();
+
+  if (valueTime === originTime) {
+    return [];
+  }
+
+  const shrinks: Tree<Date>[] = [];
+
+  // Shrink towards origin
+  const candidateTime = Math.floor((valueTime + originTime) / 2);
+  const candidate = new Date(candidateTime);
+
+  if (candidateTime !== valueTime && candidate >= min && candidate <= max) {
+    const childShrinks = generateDateShrinks(candidate, origin, min, max);
+    shrinks.push(Tree.withChildren(candidate, childShrinks));
+  }
+
+  // Try origin directly
+  if (origin >= min && origin <= max && origin.getTime() !== valueTime) {
+    shrinks.push(Tree.singleton(origin));
+  }
+
+  return shrinks;
+}
+
+/**
+ * Generate enum values from an array.
+ */
+export function enumValue<T extends readonly [string, ...string[]]>(
+  values: T
+): GeneratorFn<T[number]> {
+  return create((_size, seed) => {
+    const [index] = seed.nextBounded(values.length);
+    const value = values[index] as T[number];
+
+    // Shrink towards first element
+    const shrinks: Tree<T[number]>[] = [];
+    if (index > 0) {
+      shrinks.push(Tree.singleton(values[0] as T[number]));
+    }
+
+    return Tree.withChildren(value, shrinks);
+  });
+}
+
+/**
+ * Generate literal values (always returns the same value).
+ */
+export function literal<T extends string | number | boolean>(
+  value: T
+): GeneratorFn<T> {
+  return constant(value);
 }
