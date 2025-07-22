@@ -1,5 +1,5 @@
-import { GeneratorFn, create } from './core.js';
-import { Tree } from '../data/tree.js';
+import { GeneratorFn, create, sizeBiasedProbability } from './core.js';
+import { shrinkBuilder } from './shrink.js';
 
 /**
  * Union and optional type generators for handling nullable and union types.
@@ -11,32 +11,25 @@ import { Tree } from '../data/tree.js';
  */
 export function optional<T>(gen: GeneratorFn<T>): GeneratorFn<T | undefined> {
   return create((size, seed) => {
-    // Probability of undefined decreases with size
-    // At size 0: 50% undefined, at size 100: ~9% undefined
-    const undefinedProbability = Math.max(0.05, 0.5 - size.get() * 0.004);
+    const undefinedProbability = sizeBiasedProbability(size);
 
     const [shouldBeUndefined, newSeed] = seed.nextFloat();
 
     if (shouldBeUndefined < undefinedProbability) {
       // Generate undefined with shrink to defined value
-      const shrinks: Tree<T | undefined>[] = [];
       const definedTree = gen(size, newSeed);
-      shrinks.push(Tree.singleton(definedTree.value));
-
-      return Tree.withChildren(undefined, shrinks);
+      return shrinkBuilder<T | undefined>()
+        .add(definedTree.value)
+        .build(undefined);
     } else {
       // Generate defined value with shrink to undefined
       const tree = gen(size, newSeed);
-      const shrinks: Tree<T | undefined>[] = [Tree.singleton(undefined)];
+      const builder = shrinkBuilder<T | undefined>().add(undefined);
 
       // Include shrinks from the underlying generator
-      if (tree.hasShrinks()) {
-        for (const shrunkValue of tree.shrinks()) {
-          shrinks.push(Tree.singleton(shrunkValue));
-        }
-      }
+      builder.addFromTree(tree);
 
-      return Tree.withChildren(tree.value, shrinks);
+      return builder.build(tree.value);
     }
   });
 }
@@ -47,31 +40,23 @@ export function optional<T>(gen: GeneratorFn<T>): GeneratorFn<T | undefined> {
  */
 export function nullable<T>(gen: GeneratorFn<T>): GeneratorFn<T | null> {
   return create((size, seed) => {
-    // Probability of null decreases with size
-    const nullProbability = Math.max(0.05, 0.5 - size.get() * 0.004);
+    const nullProbability = sizeBiasedProbability(size);
 
     const [shouldBeNull, newSeed] = seed.nextFloat();
 
     if (shouldBeNull < nullProbability) {
       // Generate null with shrink to defined value
-      const shrinks: Tree<T | null>[] = [];
       const definedTree = gen(size, newSeed);
-      shrinks.push(Tree.singleton(definedTree.value));
-
-      return Tree.withChildren(null, shrinks);
+      return shrinkBuilder<T | null>().add(definedTree.value).build(null);
     } else {
       // Generate defined value with shrink to null
       const tree = gen(size, newSeed);
-      const shrinks: Tree<T | null>[] = [Tree.singleton(null)];
+      const builder = shrinkBuilder<T | null>().add(null);
 
       // Include shrinks from the underlying generator
-      if (tree.hasShrinks()) {
-        for (const shrunkValue of tree.shrinks()) {
-          shrinks.push(Tree.singleton(shrunkValue));
-        }
-      }
+      builder.addFromTree(tree);
 
-      return Tree.withChildren(tree.value, shrinks);
+      return builder.build(tree.value);
     }
   });
 }
@@ -91,26 +76,21 @@ export function union<T extends readonly unknown[]>(
     const [index, newSeed] = seed.nextBounded(generators.length);
     const selectedGen = generators[index];
     const tree = selectedGen(size, newSeed);
-
-    const shrinks: Tree<T[number]>[] = [];
+    const builder = shrinkBuilder<T[number]>();
 
     // Include shrinks from the selected generator
-    if (tree.hasShrinks()) {
-      for (const shrunkValue of tree.shrinks()) {
-        shrinks.push(Tree.singleton(shrunkValue));
-      }
-    }
+    builder.addFromTree(tree);
 
     // Try shrinking to other union alternatives
     for (let i = 0; i < generators.length; i++) {
       if (i !== index) {
         const altGen = generators[i];
         const altTree = altGen(size, newSeed);
-        shrinks.push(Tree.singleton(altTree.value));
+        builder.add(altTree.value);
       }
     }
 
-    return Tree.withChildren(tree.value, shrinks);
+    return builder.build(tree.value);
   });
 }
 
@@ -163,7 +143,7 @@ export function discriminatedUnion<
       );
     }
 
-    const shrinks: Tree<T & Record<K, string>>[] = [];
+    const builder = shrinkBuilder<T & Record<K, string>>();
 
     // Include shrinks from the selected generator (with validation)
     if (tree.hasShrinks()) {
@@ -174,7 +154,7 @@ export function discriminatedUnion<
           shrunkValue !== null &&
           (shrunkValue as any)[discriminatorKey] === expectedDiscriminator
         ) {
-          shrinks.push(Tree.singleton(shrunkValue));
+          builder.add(shrunkValue);
         }
       }
     }
@@ -184,11 +164,11 @@ export function discriminatedUnion<
       if (otherDiscriminator !== expectedDiscriminator) {
         const altGen = variants[otherDiscriminator];
         const altTree = altGen(size, newSeed);
-        shrinks.push(Tree.singleton(altTree.value));
+        builder.add(altTree.value);
       }
     }
 
-    return Tree.withChildren(tree.value, shrinks);
+    return builder.build(tree.value);
   });
 }
 
@@ -224,25 +204,20 @@ export function weightedUnion<T>(
 
     const [, selectedGen] = choices[selectedIndex];
     const tree = selectedGen(size, newSeed);
-
-    const shrinks: Tree<T>[] = [];
+    const builder = shrinkBuilder<T>();
 
     // Include shrinks from the selected generator
-    if (tree.hasShrinks()) {
-      for (const shrunkValue of tree.shrinks()) {
-        shrinks.push(Tree.singleton(shrunkValue));
-      }
-    }
+    builder.addFromTree(tree);
 
     // Try shrinking to other weighted alternatives
     for (let i = 0; i < choices.length; i++) {
       if (i !== selectedIndex) {
         const [, altGen] = choices[i];
         const altTree = altGen(size, newSeed);
-        shrinks.push(Tree.singleton(altTree.value));
+        builder.add(altTree.value);
       }
     }
 
-    return Tree.withChildren(tree.value, shrinks);
+    return builder.build(tree.value);
   });
 }

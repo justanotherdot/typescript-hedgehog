@@ -1,7 +1,15 @@
-import { GeneratorFn, create, sized, constant, frequency } from './core.js';
+import {
+  GeneratorFn,
+  create,
+  sized,
+  constant,
+  frequency,
+  choiceOf,
+} from './core.js';
 import { Range } from '../data/size';
 import { Tree } from '../data/tree';
 import { Seed } from '../data/seed';
+import { shrinkBuilder, buildNumericShrinks, lengthShrinks } from './shrink.js';
 
 /**
  * Primitive generators for basic data types.
@@ -13,8 +21,9 @@ import { Seed } from '../data/seed';
 export function bool(): GeneratorFn<boolean> {
   return create((_size, seed) => {
     const [value] = seed.nextBool();
-    const children = [Tree.singleton(!value)]; // Shrink to opposite
-    return Tree.withChildren(value, children);
+    return shrinkBuilder<boolean>()
+      .add(!value) // Shrink to opposite
+      .build(value);
   });
 }
 
@@ -44,39 +53,9 @@ function generateIntShrinks(
   origin: number,
   range: Range<number>
 ): Tree<number>[] {
-  if (value === origin) {
-    return [];
-  }
-
-  const shrinks: Tree<number>[] = [];
-
-  // Shrink towards origin
-  if (value > origin) {
-    // Try halving the distance to origin
-    const mid = Math.floor((value + origin) / 2);
-    if (mid !== value && range.contains(mid)) {
-      const childShrinks = generateIntShrinks(mid, origin, range);
-      shrinks.push(Tree.withChildren(mid, childShrinks));
-    }
-
-    // Try origin directly if in range
-    if (range.contains(origin)) {
-      shrinks.push(Tree.singleton(origin));
-    }
-  } else {
-    // value < origin
-    const mid = Math.ceil((value + origin) / 2);
-    if (mid !== value && range.contains(mid)) {
-      const childShrinks = generateIntShrinks(mid, origin, range);
-      shrinks.push(Tree.withChildren(mid, childShrinks));
-    }
-
-    if (range.contains(origin)) {
-      shrinks.push(Tree.singleton(origin));
-    }
-  }
-
-  return shrinks;
+  return buildNumericShrinks(value, origin, (candidate) =>
+    range.contains(candidate)
+  );
 }
 
 /**
@@ -127,14 +106,14 @@ function generateStringOfLength(length: number, seed: Seed): Tree<string> {
   }
 
   const fullString = chars.join('');
-  const shrinks: Tree<string>[] = [];
+  const builder = shrinkBuilder<string>();
 
   // Shrink by reducing length
-  if (length > 0) {
-    for (let newLength = 0; newLength < length; newLength++) {
-      const shorterString = chars.slice(0, newLength).join('');
-      shrinks.push(Tree.singleton(shorterString));
-    }
+  const lengthShrinkTrees = lengthShrinks(chars, (items, newLength) =>
+    items.slice(0, newLength).join('')
+  );
+  for (const shrinkTree of lengthShrinkTrees) {
+    builder.addTree(shrinkTree);
   }
 
   // Shrink individual characters
@@ -143,11 +122,11 @@ function generateStringOfLength(length: number, seed: Seed): Tree<string> {
     for (const shrunkChar of charTree.shrinks()) {
       const shrunkString =
         chars.slice(0, i).join('') + shrunkChar + chars.slice(i + 1).join('');
-      shrinks.push(Tree.singleton(shrunkString));
+      builder.add(shrunkString);
     }
   }
 
-  return Tree.withChildren(fullString, shrinks);
+  return builder.build(fullString);
 }
 
 /**
@@ -155,30 +134,30 @@ function generateStringOfLength(length: number, seed: Seed): Tree<string> {
  */
 function generateCharShrinks(char: string): Tree<string>[] {
   const charCode = char.charCodeAt(0);
-  const shrinks: Tree<string>[] = [];
+  const builder = shrinkBuilder<string>();
 
   // Shrink towards 'a', space, or '0' depending on the character
   if (char >= 'A' && char <= 'Z') {
     // Uppercase to lowercase
-    shrinks.push(Tree.singleton(char.toLowerCase()));
+    builder.add(char.toLowerCase());
   }
 
   if (char >= 'b' && char <= 'z') {
     // Lowercase letters towards 'a'
-    shrinks.push(Tree.singleton('a'));
+    builder.add('a');
   }
 
   if (char >= '1' && char <= '9') {
     // Numbers towards '0'
-    shrinks.push(Tree.singleton('0'));
+    builder.add('0');
   }
 
   if (charCode > 32) {
     // Special characters towards space
-    shrinks.push(Tree.singleton(' '));
+    builder.add(' ');
   }
 
-  return shrinks;
+  return builder.getShrinks();
 }
 
 /**
@@ -249,14 +228,17 @@ function generateAlphaString(length: number, seed: Seed): Tree<string> {
   }
 
   const fullString = chars.join('');
-  const shrinks: Tree<string>[] = [];
+  const builder = shrinkBuilder<string>();
 
   // Shrink by length
-  for (let newLength = 0; newLength < length; newLength++) {
-    shrinks.push(Tree.singleton(chars.slice(0, newLength).join('')));
+  const lengthShrinkTrees = lengthShrinks(chars, (items, newLength) =>
+    items.slice(0, newLength).join('')
+  );
+  for (const shrinkTree of lengthShrinkTrees) {
+    builder.addTree(shrinkTree);
   }
 
-  return Tree.withChildren(fullString, shrinks);
+  return builder.build(fullString);
 }
 
 /**
@@ -344,47 +326,15 @@ function generateNumberShrinks(
   max: number,
   multipleOf?: number
 ): Tree<number>[] {
-  if (value === origin) {
-    return [];
-  }
-
-  const shrinks: Tree<number>[] = [];
-
-  // Shrink towards origin
-  let candidate =
-    value > origin
-      ? Math.floor((value + origin) / 2)
-      : Math.ceil((value + origin) / 2);
-
-  // Apply multipleOf constraint if present
-  if (multipleOf !== undefined && multipleOf > 0) {
-    candidate = Math.round(candidate / multipleOf) * multipleOf;
-  }
-
-  // Ensure within bounds and different from current value
-  if (candidate !== value && candidate >= min && candidate <= max) {
-    const childShrinks = generateNumberShrinks(
-      candidate,
-      origin,
-      min,
-      max,
-      multipleOf
-    );
-    shrinks.push(Tree.withChildren(candidate, childShrinks));
-  }
-
-  // Try origin directly if valid
-  if (origin !== value && origin >= min && origin <= max) {
-    if (
-      multipleOf === undefined ||
-      multipleOf <= 0 ||
-      origin % multipleOf === 0
-    ) {
-      shrinks.push(Tree.singleton(origin));
+  const isValid = (candidate: number): boolean => {
+    if (candidate < min || candidate > max) return false;
+    if (multipleOf !== undefined && multipleOf > 0) {
+      return candidate % multipleOf === 0;
     }
-  }
+    return true;
+  };
 
-  return shrinks;
+  return buildNumericShrinks(value, origin, isValid);
 }
 
 /**
@@ -427,27 +377,13 @@ function generateDateShrinks(
   const valueTime = value.getTime();
   const originTime = origin.getTime();
 
-  if (valueTime === originTime) {
-    return [];
-  }
+  const isValid = (candidateTime: number): boolean => {
+    const candidate = new Date(candidateTime);
+    return candidate >= min && candidate <= max;
+  };
 
-  const shrinks: Tree<Date>[] = [];
-
-  // Shrink towards origin
-  const candidateTime = Math.floor((valueTime + originTime) / 2);
-  const candidate = new Date(candidateTime);
-
-  if (candidateTime !== valueTime && candidate >= min && candidate <= max) {
-    const childShrinks = generateDateShrinks(candidate, origin, min, max);
-    shrinks.push(Tree.withChildren(candidate, childShrinks));
-  }
-
-  // Try origin directly
-  if (origin >= min && origin <= max && origin.getTime() !== valueTime) {
-    shrinks.push(Tree.singleton(origin));
-  }
-
-  return shrinks;
+  const shrinks = buildNumericShrinks(valueTime, originTime, isValid);
+  return shrinks.map((tree) => tree.map((time) => new Date(time)));
 }
 
 /**
@@ -456,18 +392,7 @@ function generateDateShrinks(
 export function enumValue<T extends readonly [string, ...string[]]>(
   values: T
 ): GeneratorFn<T[number]> {
-  return create((_size, seed) => {
-    const [index] = seed.nextBounded(values.length);
-    const value = values[index] as T[number];
-
-    // Shrink towards first element
-    const shrinks: Tree<T[number]>[] = [];
-    if (index > 0) {
-      shrinks.push(Tree.singleton(values[0] as T[number]));
-    }
-
-    return Tree.withChildren(value, shrinks);
-  });
+  return choiceOf(values);
 }
 
 /**

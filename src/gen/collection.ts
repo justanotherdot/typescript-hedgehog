@@ -1,5 +1,6 @@
-import { GeneratorFn, create, sized } from './core.js';
+import { GeneratorFn, create, sized, buildCollectionShrinks } from './core.js';
 import { Tree } from '../data/tree.js';
+import { shrinkBuilder } from './shrink.js';
 
 /**
  * Collection generators for arrays, objects, and tuples.
@@ -64,30 +65,29 @@ export function arrayOfLength<T>(
       currentSeed = seed2;
     }
 
-    const shrinks: Tree<T[]>[] = [];
+    const builder = shrinkBuilder<T[]>();
 
-    // Shrink by removing elements (shorter arrays)
+    // Shrink by reducing length
     for (let newLength = 0; newLength < length; newLength++) {
       const shorterArray = elements.slice(0, newLength);
-      shrinks.push(Tree.singleton(shorterArray));
+      builder.add(shorterArray);
     }
 
-    // Shrink individual elements
-    for (let i = 0; i < length; i++) {
-      const elementTree = elementTrees[i];
-      if (elementTree.hasShrinks()) {
-        for (const shrunkElement of elementTree.shrinks()) {
-          const shrunkArray = [
-            ...elements.slice(0, i),
-            shrunkElement,
-            ...elements.slice(i + 1),
-          ];
-          shrinks.push(Tree.singleton(shrunkArray));
-        }
-      }
+    // Shrink individual elements using helper
+    const elementShrinks = buildCollectionShrinks(
+      elements,
+      elementTrees,
+      (elems, index, newValue) => [
+        ...elems.slice(0, index),
+        newValue,
+        ...elems.slice(index + 1),
+      ]
+    );
+    for (const shrink of elementShrinks) {
+      builder.addTree(shrink);
     }
 
-    return Tree.withChildren(elements, shrinks);
+    return builder.build(elements);
   });
 }
 
@@ -118,9 +118,9 @@ export function object<T extends Record<string, unknown>>(schema: {
     }
 
     const result = values as T;
-    const shrinks: Tree<T>[] = [];
+    const builder = shrinkBuilder<T>();
 
-    // Shrink individual properties
+    // Shrink individual properties using helper pattern
     for (const key of keys) {
       const valueTree = valueTrees[key];
       if (valueTree.hasShrinks()) {
@@ -129,12 +129,12 @@ export function object<T extends Record<string, unknown>>(schema: {
             ...result,
             [key]: shrunkValue,
           };
-          shrinks.push(Tree.singleton(shrunkObject));
+          builder.add(shrunkObject);
         }
       }
     }
 
-    return Tree.withChildren(result, shrinks);
+    return builder.build(result);
   });
 }
 
@@ -164,7 +164,7 @@ export function tuple<T extends readonly unknown[]>(
     }
 
     const result = elements as unknown as T;
-    const shrinks: Tree<T>[] = [];
+    const builder = shrinkBuilder<T>();
 
     // Shrink individual elements
     for (let i = 0; i < generators.length; i++) {
@@ -176,11 +176,11 @@ export function tuple<T extends readonly unknown[]>(
             shrunkElement,
             ...elements.slice(i + 1),
           ] as unknown as T;
-          shrinks.push(Tree.singleton(shrunkTuple));
+          builder.add(shrunkTuple);
         }
       }
     }
 
-    return Tree.withChildren(result, shrinks);
+    return builder.build(result);
   });
 }
