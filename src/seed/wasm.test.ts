@@ -62,18 +62,3 @@ describe('WASM Seed', () => {
     expect(str).toMatch(/^Seed\(/);
   });
 });
-
-// FUTURE: Add tests for actual WASM implementation when available
-describe('WASM Integration (future)', () => {
-  test.skip('loads WASM module when available', () => {
-    // TODO: Test actual WASM loading when module is built
-  });
-
-  test.skip('falls back gracefully when WASM unavailable', () => {
-    // TODO: Test fallback behavior
-  });
-
-  test.skip('WASM and BigInt implementations produce same results', () => {
-    // TODO: Cross-implementation consistency tests
-  });
-});

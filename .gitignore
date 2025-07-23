@@ -48,3 +48,7 @@ hedgehog-splitmix-wasm/Cargo.lock
 # Performance profiling artifacts
 *.cpuprofile
 *.heapprofile
+
+# Reference repositories
+zod-reference/
+zod-fast-check/

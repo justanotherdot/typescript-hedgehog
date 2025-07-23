@@ -3,6 +3,7 @@ import { GeneratorFn } from './gen/core.js';
 import { Size, Range } from './data/size.js';
 import { Seed } from './data/seed.js';
 import { Tree } from './data/tree.js';
+import { fromSchema } from '@/gen/zod/core/zod.js';
 
 // Import generator functions
 import {
@@ -240,6 +241,11 @@ export class Gen<T> {
   static literal<T extends string | number | boolean>(value: T): Gen<T> {
     const generatorFn = literal(value);
     return new Gen(generatorFn);
+  }
+
+  // Zod schema integration
+  static fromSchema<T>(schema: any): Gen<T> {
+    return fromSchema(schema);
   }
 
   // Collection generators

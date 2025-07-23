@@ -12,18 +12,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    include: ['src/**/*.{test,spec}.?(c|m)[jt]s?(x)'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html', 'lcov'],
-      exclude: [
-        'node_modules/',
-        'dist/',
-        '**/*.d.ts',
-        '**/*.test.ts',
-        '**/*.spec.ts',
-        '**/*.bench.ts',
-      ],
-    },
+    include: ['src/**/*.bench.?(c|m)[jt]s?(x)'],
+    testTimeout: 300000, // 5 minutes for thorough benchmarks
   },
 });
