@@ -161,12 +161,14 @@ export class Gen<T> {
   }
 
   static oneOf<T>(genList: Gen<T>[]): Gen<T> {
-    const generatorFns = genList.map(g => g.generator);
+    const generatorFns = genList.map((g) => g.generator);
     return new Gen(generators.oneOf(generatorFns));
   }
 
   static frequency<T>(choices: Array<[number, Gen<T>]>): Gen<T> {
-    const generatorChoices = choices.map(([weight, gen]) => [weight, gen.generator] as [number, GeneratorFn<T>]);
+    const generatorChoices = choices.map(
+      ([weight, gen]) => [weight, gen.generator] as [number, GeneratorFn<T>]
+    );
     return new Gen(generators.frequency(generatorChoices));
   }
 

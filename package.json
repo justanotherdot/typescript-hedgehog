@@ -32,7 +32,7 @@
     "lint:fix": "bin/lint:fix",
     "typecheck": "bin/typecheck",
     "bench": "bin/bench",
-    "prepublishOnly": "npm run build:wasm && npm run build && npm test && npm run lint",
+    "prepublishOnly": "npm run build:wasm && npm run build && NODE_OPTIONS=\"--no-warnings=ExperimentalWarning\" npm test && npm run lint",
     "prepack": "npm run build:wasm && npm run build"
   },
   "keywords": [

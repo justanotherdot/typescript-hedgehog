@@ -161,7 +161,9 @@ export class ZodGenerationRegistry {
 
     switch (schemaType) {
       case 'ZodString':
-        return constant(`fallback-string-${path.replace(/[^a-zA-Z0-9]/g, '-')}`);
+        return constant(
+          `fallback-string-${path.replace(/[^a-zA-Z0-9]/g, '-')}`
+        );
       case 'ZodNumber':
         return constant(0);
       case 'ZodBoolean':

@@ -48,7 +48,9 @@ export function oneOf<T>(generators: GeneratorFn<T>[]): GeneratorFn<T> {
 /**
  * Choose generators based on weighted frequency.
  */
-export function frequency<T>(choices: Array<[number, GeneratorFn<T>]>): GeneratorFn<T> {
+export function frequency<T>(
+  choices: Array<[number, GeneratorFn<T>]>
+): GeneratorFn<T> {
   if (choices.length === 0) {
     throw new Error('frequency requires at least one choice');
   }
