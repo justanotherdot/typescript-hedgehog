@@ -2,6 +2,9 @@
 name = "hedgehog-splitmix-wasm"
 version = "0.1.0"
 edition = "2021"
+license = "BSD-3-Clause"
+description = "WebAssembly bindings for SplitMix64 PRNG"
+repository = "https://github.com/justanotherdot/typescript-hedgehog"
 
 [lib]
 crate-type = ["cdylib"]
