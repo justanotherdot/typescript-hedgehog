@@ -1,10 +1,10 @@
 import { describe, test, expectTypeOf } from 'vitest';
-import { Gen } from './gen';
-import { Tree } from './data/tree';
-import { Size, Range } from './data/size';
-import { Seed } from './data/seed';
-import { Property, forAll } from './property';
-import { TestResult, PassResult, FailResult } from './result';
+import { Gen } from './gen.js';
+import { Tree } from './data/tree.js';
+import { Size, Range } from './data/size.js';
+import { Seed } from './data/seed.js';
+import { Property, forAll } from './property.js';
+import { TestResult, PassResult, FailResult } from './result.js';
 
 describe('Type Safety', () => {
   test('Gen type inference', () => {

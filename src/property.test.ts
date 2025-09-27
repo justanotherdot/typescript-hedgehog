@@ -1,10 +1,10 @@
 import { describe, test, expect } from 'vitest';
-import { forAll } from './property';
-import { Gen, Ints } from './gen';
-import { Tree } from './data/tree';
-import { Config } from './config';
-import { Seed } from './data/seed';
-import { Range } from './data/size';
+import { forAll } from './property.js';
+import { Gen, Ints } from './gen.js';
+import { Tree } from './data/tree.js';
+import { Config } from './config.js';
+import { Seed } from './data/seed.js';
+import { Range } from './data/size.js';
 
 describe('Property testing', () => {
   test('simple passing property', () => {

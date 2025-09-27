@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { Seed } from './seed';
+import { Seed } from './seed.js';
 
 describe('Seed', () => {
   test('creates seed from number', () => {

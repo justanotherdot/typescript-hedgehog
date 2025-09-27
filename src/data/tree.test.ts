@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { Tree } from './tree';
+import { Tree } from './tree.js';
 
 describe('Tree', () => {
   test('creates singleton tree', () => {

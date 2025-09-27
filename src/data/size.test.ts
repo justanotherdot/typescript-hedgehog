@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { Size, Range, Distribution, Ranges } from './size';
+import { Size, Range, Distribution, Ranges } from './size.js';
 
 describe('Size', () => {
   test('creates size with valid value', () => {

@@ -2,7 +2,7 @@
  * Tree rendering utilities for debugging and visualization.
  */
 
-import { Tree } from './tree';
+import { Tree } from './tree.js';
 
 /**
  * Options for rendering trees.

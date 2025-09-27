@@ -6,9 +6,9 @@ import {
   frequency,
   choiceOf,
 } from './core.js';
-import { Range } from '../data/size';
-import { Tree } from '../data/tree';
-import { Seed } from '../data/seed';
+import { Range } from '../data/size.js';
+import { Tree } from '../data/tree.js';
+import { Seed } from '../data/seed.js';
 import { shrinkBuilder, buildNumericShrinks, lengthShrinks } from './shrink.js';
 
 /**

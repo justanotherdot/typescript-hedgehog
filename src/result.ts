@@ -2,8 +2,8 @@
  * Result types for property testing.
  */
 
-import { Size } from './data/size';
-import { Seed } from './data/seed';
+import { Size } from './data/size.js';
+import { Seed } from './data/seed.js';
 
 /**
  * Represents a test case that was executed.

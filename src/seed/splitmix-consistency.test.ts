@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
-import { Seed as BigIntSeed } from './bigint';
-import { Seed as WasmSeed } from './wasm';
+import { Seed as BigIntSeed } from './bigint.js';
+import { Seed as WasmSeed } from './wasm.js';
 
 describe('SplitMix64 consistency between implementations', () => {
   const testCases = [

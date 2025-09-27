@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { Config } from './config';
+import { Config } from './config.js';
 
 describe('Config', () => {
   test('creates default configuration', () => {

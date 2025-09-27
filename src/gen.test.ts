@@ -1,8 +1,8 @@
 import { describe, test, expect } from 'vitest';
-import { Gen } from './gen';
-import { Tree } from './data/tree';
-import { Size } from './data/size';
-import { Seed } from './data/seed';
+import { Gen } from './gen.js';
+import { Tree } from './data/tree.js';
+import { Size } from './data/size.js';
+import { Seed } from './data/seed.js';
 
 describe('Gen', () => {
   const size = Size.of(10);

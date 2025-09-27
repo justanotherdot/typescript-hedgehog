@@ -1,11 +1,11 @@
-export { Seed } from './data/seed';
-export { Size, Range, Distribution, Ranges } from './data/size';
-export { Tree } from './data/tree';
+export { Seed } from './data/seed.js';
+export { Size, Range, Distribution, Ranges } from './data/size.js';
+export { Tree } from './data/tree.js';
 export {
   renderTree,
   renderTreeCompact,
   getTreeStats,
-} from './data/tree-render';
+} from './data/tree-render.js';
 export {
   Gen,
   Ints,
@@ -13,9 +13,9 @@ export {
   NumberOptions,
   DateOptions,
   ArrayOptions,
-} from './gen';
-export { Property, forAll } from './property';
-export { Config } from './config';
+} from './gen.js';
+export { Property, forAll } from './property.js';
+export { Config } from './config.js';
 export {
   TestResult,
   TestCase,
@@ -23,7 +23,7 @@ export {
   PassResult,
   FailResult,
   GaveUpResult,
-} from './result';
+} from './result.js';
 export {
   Symbolic,
   Concrete,
@@ -43,4 +43,4 @@ export {
   ensure,
   commandRange,
   newVar,
-} from './state';
+} from './state.js';
