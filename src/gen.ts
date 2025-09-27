@@ -323,6 +323,50 @@ export class Gen<T> {
     const generatorFn = weightedUnion(generatorFnChoices);
     return new Gen(generatorFn);
   }
+
+  // Additional utility methods for state machine testing
+  static pure<T>(value: T): Gen<T> {
+    return new Gen(() => Tree.singleton(value));
+  }
+
+  static delay<T>(fn: () => Gen<T>): Gen<T> {
+    return Gen.create((size, seed) => fn().generate(size, seed));
+  }
+
+  static item<T>(items: T[]): Gen<T> {
+    if (items.length === 0) {
+      throw new Error('item requires at least one item');
+    }
+    return Gen.create((_, seed) => {
+      const [index] = seed.nextBounded(items.length);
+      return Tree.singleton(items[index]);
+    });
+  }
+
+  static range(start: number, end: number): Gen<number> {
+    return Gen.create((_, seed) => {
+      const values: number[] = [];
+      for (let i = start; i <= end; i++) {
+        values.push(i);
+      }
+      const [index] = seed.nextBounded(values.length);
+      return Tree.singleton(values[index]);
+    });
+  }
+
+  static foldM<A, B>(
+    _values: Gen<A>,
+    initial: B,
+    fn: (acc: B) => Gen<B>
+  ): Gen<B> {
+    return Gen.create((size, seed) => {
+      // For simplicity, we'll just apply the function once
+      // A full foldM implementation would need to handle the list of values
+      const resultGen = fn(initial);
+      const [, newSeed] = seed.split();
+      return resultGen.generate(size, newSeed);
+    });
+  }
 }
 
 // Re-export types and all generator functions

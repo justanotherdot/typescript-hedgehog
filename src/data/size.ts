@@ -5,7 +5,7 @@
  * generate more complex test data.
  */
 export class Size {
-  constructor(private readonly value: number) {
+  constructor(readonly value: number) {
     if (value < 0) {
       throw new Error('Size must be non-negative');
     }

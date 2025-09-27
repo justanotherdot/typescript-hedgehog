@@ -422,12 +422,82 @@ Contributions welcome! This library follows these principles:
 - **Determinism**: Reproducible test runs with seed control
 - **Simplicity**: Clear, obvious APIs that just work
 
+## State machine testing
+
+TypeScript Hedgehog now includes comprehensive state machine testing capabilities, allowing you to test stateful systems with realistic command sequences:
+
+```typescript
+import {
+  command, require, update, ensure,
+  sequential, forAllSequential, commandRange,
+  newVar, Gen, Range
+} from 'hedgehog';
+
+// Define your system's state
+interface BankState {
+  accounts: Map<Variable<string>, { balance: number; isOpen: boolean }>;
+}
+
+// Create commands that model operations
+const createAccount = command(
+  (_state) => Gen.object({ initialBalance: Gen.int(Range.uniform(0, 1000)) }),
+  async (input) => `account_${Math.random().toString(36).slice(2)}`,
+  require((_state, input) => input.initialBalance >= 0),
+  update((state, input, output) => ({
+    accounts: new Map(state.accounts).set(output, {
+      balance: input.initialBalance,
+      isOpen: true
+    })
+  })),
+  ensure((_before, after, _input, _output) => after.accounts.size > 0)
+);
+
+// Test realistic sequences of operations
+const property = forAllSequential(
+  sequential(
+    commandRange(5, 15),
+    { accounts: new Map() },
+    [createAccount, deposit, withdraw, closeAccount]
+  )
+);
+
+await property.check({ testLimit: 100 });
+```
+
+State machine testing provides:
+- **Symbolic variables**: Commands can reference outputs from previous commands
+- **Realistic sequences**: Generate command sequences that respect state dependencies
+- **Comprehensive validation**: Check preconditions, state transitions, and postconditions
+- **Automatic shrinking**: Failed sequences shrink to minimal counterexamples
+
+See the [State Machine Testing Guide](docs/state-machine-testing.md) for complete documentation.
+
+## Roadmap
+
+### Completed features ✅
+
+- **Core property-based testing**: Generators, properties, shrinking
+- **High-performance random generation**: AdaptiveSeed with WASM optimization
+- **Type-safe generators**: Full TypeScript support with precise types
+- **State machine testing**: Sequential command execution with symbolic variables
+- **Comprehensive documentation**: User guides and implementation details
+
+### Advanced features (planned) 🚧
+
+- **Parallel command execution**: Test concurrent operations with race condition detection
+- **Enhanced shrinking**: Smarter shrinking strategies for command sequences
+- **Custom test runners**: Integration with popular testing frameworks
+- **Coverage-guided testing**: Generate test cases based on code coverage
+- **Mutation testing**: Automatically introduce bugs to verify test quality
+
 ## License
 
 BSD-3-Clause
 
 ## Further reading
 
+- [State Machine Testing Guide](docs/state-machine-testing.md) - Complete user documentation
+- [State Machine Implementation](docs/state-machine-implementation.md) - Technical architecture details
 - [Performance Analysis](docs/performance-analysis.md) - Detailed benchmarking results
 - [WASM Bindings](docs/wasm-bindings.md) - Technical details of WASM integration
 - [Hedgehog (Haskell)](https://hedgehog.qa/) - Original inspiration
