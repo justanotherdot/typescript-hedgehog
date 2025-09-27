@@ -31,7 +31,8 @@
     "lint": "bin/lint",
     "lint:fix": "bin/lint:fix",
     "typecheck": "bin/typecheck",
-    "bench": "bin/bench"
+    "bench": "bin/bench",
+    "postinstall": "npm run build"
   },
   "keywords": [
     "property-based-testing",
@@ -66,6 +67,11 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "src",
+    "README.md",
+    "bin",
+    "tsconfig.json",
+    "vitest.config.ts",
+    "hedgehog-splitmix-wasm"
   ]
 }
