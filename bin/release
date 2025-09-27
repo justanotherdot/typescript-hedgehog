@@ -1,0 +1,52 @@
+#!/bin/sh -eu
+
+# Release script - bumps version and creates release commit
+# Usage: bin/release [patch|minor|major]
+
+BUMP_TYPE=${1:-patch}
+
+if [ "$BUMP_TYPE" != "patch" ] && [ "$BUMP_TYPE" != "minor" ] && [ "$BUMP_TYPE" != "major" ]; then
+    echo "Usage: bin/release [patch|minor|major]"
+    echo "  patch: 0.1.0 -> 0.1.1"
+    echo "  minor: 0.1.0 -> 0.2.0"
+    echo "  major: 0.1.0 -> 1.0.0"
+    exit 1
+fi
+
+# Get current version from package.json
+CURRENT_VERSION=$(node -p "require('./package.json').version")
+echo "Current version: $CURRENT_VERSION"
+
+# Calculate new version
+case $BUMP_TYPE in
+    patch)
+        NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+        ;;
+    minor)
+        NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{$(NF-1) = $(NF-1) + 1; $NF = 0;} 1' | sed 's/ /./g')
+        ;;
+    major)
+        NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{$1 = $1 + 1; $2 = 0; $3 = 0;} 1' | sed 's/ /./g')
+        ;;
+esac
+
+echo "New version: $NEW_VERSION"
+
+# Update package.json
+sed -i.bak "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" package.json
+rm -f package.json.bak
+
+# Update WASM package.json
+sed -i.bak "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" hedgehog-splitmix-wasm/pkg/package.json
+rm -f hedgehog-splitmix-wasm/pkg/package.json.bak
+
+# Update dependency reference in main package.json
+sed -i.bak "s/@justanotherdot\/hedgehog-splitmix-wasm\": \"^$CURRENT_VERSION\"/@justanotherdot\/hedgehog-splitmix-wasm\": \"^$NEW_VERSION\"/" package.json
+rm -f package.json.bak
+
+# Create release commit
+git add package.json hedgehog-splitmix-wasm/pkg/package.json
+git commit -m "Bump version to $NEW_VERSION [release]"
+
+echo "Version bumped to $NEW_VERSION"
+echo "Push to main to trigger release: git push origin main"

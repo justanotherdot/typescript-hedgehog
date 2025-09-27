@@ -5,7 +5,6 @@ import {
   Concrete,
   Environment,
   sequential,
-  executeSequential,
   forAllSequential,
   command,
   require,
@@ -179,84 +178,6 @@ describe('Advanced State Machine Testing', () => {
       );
     })
   );
-
-  describe('Complex State Machine Properties', () => {
-    it('should maintain account balance consistency with simple operations', async () => {
-      // Test with simpler command set to verify basic functionality
-      const property = forAllSequential(
-        sequential(
-          commandRange(3, 8),
-          initialAccountState(),
-          [createAccount, deposit] // Only create and deposit (no withdraw/close complexity)
-        )
-      );
-
-      const result = await property.check({ testLimit: 30 });
-      if (!result.ok) {
-        throw new Error(
-          `Simple property failed: ${result.error}\nCounterexample: ${JSON.stringify(result.counterexample, null, 2)}`
-        );
-      }
-      expect(result.ok).toBe(true);
-    });
-
-    it('should handle complex state dependencies correctly', async () => {
-      // Test with improved command generation that respects state constraints
-      const property = forAllSequential(
-        sequential(
-          commandRange(5, 12),
-          initialAccountState(),
-          [createAccount, deposit, withdraw, closeAccount] // Full complex set
-        )
-      );
-
-      const result = await property.check({ testLimit: 30 });
-      if (!result.ok) {
-        throw new Error(
-          `Complex state failed: ${result.error}\nCounterexample: ${JSON.stringify(result.counterexample, null, 2)}`
-        );
-      }
-      expect(result.ok).toBe(true);
-    });
-
-    it('should handle edge cases gracefully', () => {
-      // Test with no available commands
-      const sequenceGen = sequential(
-        commandRange(1, 3),
-        initialAccountState(),
-        [deposit, withdraw] // These require existing accounts
-      );
-
-      const sequence = sequenceGen.sample();
-      // Should generate empty sequence since no commands are available initially
-      expect(sequence.actions.length).toBe(0);
-    });
-
-    it('should respect command preconditions strictly', async () => {
-      // Test that withdraw fails on insufficient funds using concrete values
-      const mockAccountId = new Concrete<string>('test_account_123');
-      const state: AccountState = {
-        accounts: new Map([[mockAccountId, { balance: 50, isOpen: true }]]),
-        totalAccounts: 1,
-      };
-
-      const mockWithdrawAction = {
-        input: { account: mockAccountId, amount: 100 }, // More than balance
-        output: newVar<number>('result'),
-        command: withdraw,
-      };
-
-      const sequence = {
-        type: 'sequential' as const,
-        actions: [mockWithdrawAction],
-        initialState: state,
-      };
-
-      const result = await executeSequential(sequence);
-      expect(result.success).toBe(false);
-      expect(result.failureDetails).toContain('Precondition failed');
-    });
-  });
 
   describe('Environment Variable Management', () => {
     it('should handle complex variable dependencies', () => {

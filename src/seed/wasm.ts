@@ -7,7 +7,7 @@
  * Build with: npm run build:wasm
  */
 
-import * as wasm from '../../hedgehog-splitmix-wasm/pkg/hedgehog_splitmix_wasm.js';
+import * as wasm from '@justanotherdot/hedgehog-splitmix-wasm';
 import { BulkSeed } from './interface.js';
 
 /**

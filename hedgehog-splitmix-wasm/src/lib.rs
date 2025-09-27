@@ -34,7 +34,10 @@ impl DataFormat {
     }
 }
 
-/// SplitMix64 constants from the reference implementation
+/// SplitMix64 constants from the public domain reference implementation
+/// by Sebastiano Vigna (2015): https://prng.di.unimi.it/splitmix64.c
+/// Algorithm from "Fast splittable pseudorandom number generators" by
+/// Guy L. Steele Jr., Doug Lea, and Christine H. Flood (2014)
 const GOLDEN_GAMMA: u64 = 0x9e3779b97f4a7c15;
 const MIX_MULTIPLIER_1: u64 = 0xbf58476d1ce4e5b9;
 const MIX_MULTIPLIER_2: u64 = 0x94d049bb133111eb;

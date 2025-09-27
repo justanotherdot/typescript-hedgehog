@@ -1,6 +1,6 @@
 # Hedgehog for TypeScript
 
-A property-based testing library for TypeScript, inspired by the Haskell [Hedgehog](https://hedgehog.qa/) library. Hedgehog automatically generates test cases and provides integrated shrinking to find minimal failing examples.
+A property-based testing library for TypeScript, inspired by Jacob Stanley's [Hedgehog](https://hedgehog.qa/) library for Haskell. Hedgehog automatically generates test cases and provides integrated shrinking to find minimal failing examples.
 
 ## Key features
 

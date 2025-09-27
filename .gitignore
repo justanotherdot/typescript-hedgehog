@@ -52,3 +52,6 @@ hedgehog-splitmix-wasm/Cargo.lock
 # Reference repositories
 zod-reference/
 zod-fast-check/
+
+# Claude Code context files
+.claude/

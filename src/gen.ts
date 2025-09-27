@@ -4,6 +4,7 @@ import { Size, Range } from './data/size.js';
 import { Seed } from './data/seed.js';
 import { Tree } from './data/tree.js';
 import { fromSchema } from '@/gen/zod/core/zod.js';
+import * as generators from './gen/generators.js';
 
 // Import generator functions
 import {
@@ -148,55 +149,27 @@ export class Gen<T> {
   }
   // Core static methods
   static create<T>(fn: GeneratorFn<T>): Gen<T> {
-    return new Gen(fn);
+    return new Gen(generators.create(fn));
   }
 
   static sized<T>(fn: (size: Size) => Gen<T>): Gen<T> {
-    return new Gen((size, seed) => fn(size).generate(size, seed));
+    return new Gen(generators.sized((size) => fn(size).generator));
   }
 
-  static constant<T extends string | number | boolean | symbol>(
-    value: T
-  ): Gen<T> {
-    return new Gen(() => Tree.singleton(value));
+  static constant<T>(value: T): Gen<T> {
+    return new Gen(generators.constant(value));
   }
 
-  static oneOf<T>(generators: Gen<T>[]): Gen<T> {
-    if (generators.length === 0) {
-      throw new Error('oneOf requires at least one generator');
-    }
-
-    return new Gen((size, seed) => {
-      const [index] = seed.nextBounded(generators.length);
-      return generators[index].generate(size, seed);
-    });
+  static oneOf<T>(genList: Gen<T>[]): Gen<T> {
+    const generatorFns = genList.map((g) => g.generator);
+    return new Gen(generators.oneOf(generatorFns));
   }
 
   static frequency<T>(choices: Array<[number, Gen<T>]>): Gen<T> {
-    if (choices.length === 0) {
-      throw new Error('frequency requires at least one choice');
-    }
-
-    const totalWeight = choices.reduce((sum, [weight]) => sum + weight, 0);
-    if (totalWeight <= 0) {
-      throw new Error('frequency requires positive total weight');
-    }
-
-    return new Gen((size, seed) => {
-      const [randomValue] = seed.nextFloat();
-      const target = randomValue * totalWeight;
-
-      let currentWeight = 0;
-      for (const [weight, gen] of choices) {
-        currentWeight += weight;
-        if (target <= currentWeight) {
-          return gen.generate(size, seed);
-        }
-      }
-
-      // Fallback to last generator
-      return choices[choices.length - 1][1].generate(size, seed);
-    });
+    const generatorChoices = choices.map(
+      ([weight, gen]) => [weight, gen.generator] as [number, GeneratorFn<T>]
+    );
+    return new Gen(generators.frequency(generatorChoices));
   }
 
   // Basic primitive generators
