@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { Gen, Ints, Strings } from '../gen.js';
-import { Range, Size } from '../data/size';
-import { Seed } from '../data/seed';
+import { Range, Size } from '../data/size.js';
+import { Seed } from '../data/seed.js';
 
 describe('primitive generators', () => {
   const size = Size.of(10);

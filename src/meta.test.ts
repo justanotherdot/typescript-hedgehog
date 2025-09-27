@@ -1,9 +1,9 @@
 import { describe, test, expect } from 'vitest';
-import { forAll } from './property';
-import { Gen } from './gen';
-import { Range, Ranges } from './data/size';
-import { Config } from './config';
-import { Seed } from './data/seed';
+import { forAll } from './property.js';
+import { Gen } from './gen.js';
+import { Range, Ranges } from './data/size.js';
+import { Config } from './config.js';
+import { Seed } from './data/seed.js';
 
 describe('Meta Properties', () => {
   test('bool generator produces only booleans', () => {

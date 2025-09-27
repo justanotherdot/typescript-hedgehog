@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { Seed, isWasmAvailable } from './wasm';
+import { Seed, isWasmAvailable } from './wasm.js';
 
 describe('WASM Seed', () => {
   test('reports WASM availability', () => {

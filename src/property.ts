@@ -2,11 +2,11 @@
  * Core property testing functionality.
  */
 
-import { Gen } from './gen';
-import { Size } from './data/size';
-import { Seed } from './data/seed';
-import { Tree } from './data/tree';
-import { Config } from './config';
+import { Gen } from './gen.js';
+import { Size } from './data/size.js';
+import { Seed } from './data/seed.js';
+import { Tree } from './data/tree.js';
+import { Config } from './config.js';
 import {
   TestResult,
   TestCase,
@@ -18,7 +18,7 @@ import {
   addTest,
   addShrinks,
   addLabel,
-} from './result';
+} from './result.js';
 
 /**
  * A property that can be tested.

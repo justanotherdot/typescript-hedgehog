@@ -1,8 +1,8 @@
 import { describe, test, expect } from 'vitest';
-import { Gen } from './gen';
-import { Size } from './data/size';
-import { Seed } from './data/seed'; // AdaptiveSeed - works with both WASM and BigInt
-import { AdaptiveSeed } from './seed/adaptive';
+import { Gen } from './gen.js';
+import { Size } from './data/size.js';
+import { Seed } from './data/seed.js'; // AdaptiveSeed - works with both WASM and BigInt
+import { AdaptiveSeed } from './seed/adaptive.js';
 
 describe('Library integration with AdaptiveSeed', () => {
   const size = Size.of(10);
