@@ -24,3 +24,23 @@ export {
   FailResult,
   GaveUpResult,
 } from './result';
+export {
+  Symbolic,
+  Concrete,
+  Variable,
+  Environment,
+  Command,
+  Action,
+  Sequential,
+  Parallel,
+  StateMachineProperty,
+  sequential,
+  executeSequential,
+  forAllSequential,
+  command,
+  require,
+  update,
+  ensure,
+  commandRange,
+  newVar,
+} from './state';
