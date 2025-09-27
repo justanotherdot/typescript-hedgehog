@@ -8,4 +8,4 @@ if ! command -v wasm-pack >/dev/null 2>&1; then
 fi
 
 cd hedgehog-splitmix-wasm
-wasm-pack build --target bundler --out-dir pkg
+wasm-pack build --target bundler --out-dir pkg --scope justanotherdot
