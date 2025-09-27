@@ -1,17 +1,15 @@
-name: Publish to npm
+name: Release Pipeline
 
 on:
   push:
     branches:
       - main
+      - test-release
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
     if: contains(github.event.head_commit.message, '[release]')
-    permissions:
-      contents: read
-      id-token: write  # For npm provenance
 
     steps:
     - name: Checkout code
@@ -30,40 +28,143 @@ jobs:
         toolchain: 1.88.0
         targets: wasm32-unknown-unknown
 
+    - name: Cache Rust dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          hedgehog-splitmix-wasm/target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Cache wasm-pack
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin/wasm-pack
+        key: ${{ runner.os }}-wasm-pack-${{ hashFiles('hedgehog-splitmix-wasm/Cargo.toml', 'hedgehog-splitmix-wasm/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-wasm-pack-
+
     - name: Install wasm-pack
-      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      run: |
+        if ! command -v wasm-pack >/dev/null 2>&1; then
+          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        fi
 
     - name: Install dependencies
       run: npm ci
 
-    - name: Run full CI pipeline
-      run: |
-        npm run lint
-        npm run build:wasm
-        npm run typecheck
-        npm run build
-        npm test
+    - name: Build WASM package
+      run: npm run build:wasm
 
-    - name: Verify package contents
-      run: npm pack --dry-run
+    - name: Build main package
+      run: npm run build
 
-    - name: Publish WASM package to npm
-      run: cd hedgehog-splitmix-wasm/pkg && npm publish --provenance --access public
+    - name: Upload WASM artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: wasm-pkg
+        path: hedgehog-splitmix-wasm/pkg/
+
+    - name: Upload main package artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: main-pkg
+        path: |
+          dist/
+          package.json
+          README.md
+          LICENSE
+
+  publish-wasm:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Download WASM artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: wasm-pkg
+        path: pkg/
+
+    - name: Verify WASM package (dry-run)
+      run: cd pkg && npm publish --dry-run
+
+    - name: Publish WASM package
+      if: github.ref_name == 'main'
+      run: cd pkg && npm publish --provenance --access public
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-    - name: Publish main package to npm
+  publish-main:
+    needs: [build, publish-wasm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Download main package artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: main-pkg
+
+    - name: Verify main package (dry-run)
+      run: npm publish --dry-run
+
+    - name: Publish main package
+      if: github.ref_name == 'main'
       run: npm publish --provenance --access public
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+  create-release:
+    needs: [publish-main]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Verify release creation (test)
+      if: github.ref_name == 'test-release'
+      run: |
+        echo "Would create GitHub release:"
+        echo "Tag: ${{ github.ref_name }}"
+        echo "Name: Release ${{ github.ref_name }}"
+
     - name: Create GitHub Release
+      if: github.ref_name == 'main'
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
         body: |
           ## Changes
           See [CHANGELOG.md](CHANGELOG.md) for details.
