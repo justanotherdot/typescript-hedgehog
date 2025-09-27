@@ -44,9 +44,23 @@ rm -f hedgehog-splitmix-wasm/pkg/package.json.bak
 sed -i.bak "s/@justanotherdot\/hedgehog-splitmix-wasm\": \"^$CURRENT_VERSION\"/@justanotherdot\/hedgehog-splitmix-wasm\": \"^$NEW_VERSION\"/" package.json
 rm -f package.json.bak
 
-# Create release commit
+# Run pre-release checks
+echo "Running pre-release checks..."
+npm run build:wasm
+npm run build
+npm run typecheck
+NODE_OPTIONS="--no-warnings=ExperimentalWarning" npm test
+npm run lint
+
+# Create release commit with proper format
 git add package.json hedgehog-splitmix-wasm/pkg/package.json
-git commit -m "Bump version to $NEW_VERSION [release]"
+git commit -m "Release $NEW_VERSION [release]"
+
+# Create git tag
+git tag "$NEW_VERSION"
 
 echo "Version bumped to $NEW_VERSION"
-echo "Push to main to trigger release: git push origin main"
+echo "Release commit and tag created"
+echo "To publish:"
+echo "  git push origin main --tags"
+echo "  npm publish"
