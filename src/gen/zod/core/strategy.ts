@@ -9,6 +9,7 @@
 
 import { z } from 'zod';
 import { GeneratorFn } from '@/gen/core.js';
+import { constant } from '@/gen/generators.js';
 
 /**
  * Context object passed to strategies containing schema information and generation state.
@@ -156,33 +157,30 @@ export class ZodGenerationRegistry {
   ): GeneratorFn<any> {
     const schemaType = (schema as any)._def?.typeName;
 
-    // Import Gen at runtime to avoid circular dependencies
-    const Gen = require('../../gen.js').Gen;
+    // Use direct generator function to avoid circular dependency with Gen class
 
     switch (schemaType) {
       case 'ZodString':
-        return Gen.constant(
-          `fallback-string-${path.replace(/[^a-zA-Z0-9]/g, '-')}`
-        ).generator;
+        return constant(`fallback-string-${path.replace(/[^a-zA-Z0-9]/g, '-')}`);
       case 'ZodNumber':
-        return Gen.constant(0).generator;
+        return constant(0);
       case 'ZodBoolean':
-        return Gen.constant(false).generator;
+        return constant(false);
       case 'ZodArray':
-        return Gen.constant([]).generator;
+        return constant([]);
       case 'ZodObject':
-        return Gen.constant({}).generator;
+        return constant({});
       case 'ZodDate':
-        return Gen.constant(new Date('2020-01-01')).generator;
+        return constant(new Date('2020-01-01'));
       case 'ZodBigInt':
-        return Gen.constant(0n).generator;
+        return constant(0n);
       case 'ZodNull':
-        return Gen.constant(null).generator;
+        return constant(null);
       case 'ZodUndefined':
-        return Gen.constant(undefined).generator;
+        return constant(undefined);
       default:
         // For unknown types, return null as a safe fallback
-        return Gen.constant(null).generator;
+        return constant(null);
     }
   }
 }
