@@ -1,4 +1,4 @@
-name: Release Pipeline
+name: Publish Pipeline
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
       - test-release
 
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
     if: contains(github.event.head_commit.message, '[release]')
     permissions:
@@ -84,38 +84,3 @@ jobs:
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  create-release:
-    needs: [build]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Verify release creation (test)
-      if: github.ref_name == 'test-release'
-      run: |
-        echo "Would create GitHub release:"
-        echo "Tag: ${{ github.ref_name }}"
-        echo "Name: Release ${{ github.ref_name }}"
-
-    - name: Create GitHub Release
-      if: github.ref_name == 'main'
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref_name }}
-        release_name: Release ${{ github.ref_name }}
-        body: |
-          ## Changes
-          See [CHANGELOG.md](CHANGELOG.md) for details.
-
-          ## Installation
-          ```bash
-          npm install @justanotherdot/hedgehog@${{ github.ref_name }}
-          ```
-        draft: false
-        prerelease: false
