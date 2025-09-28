@@ -47,12 +47,12 @@ npm pkg set dependencies.@justanotherdot/hedgehog-splitmix-wasm="^$NEW_VERSION"
 cd "$WORKSPACE_ROOT"
 
 # Create commit
-git commit -am "Release $NEW_VERSION"
+git commit -am "Release $NEW_VERSION [release]"
 
 echo "$BUMP_TYPE version bump completed: $NEW_VERSION"
 echo "Packages updated: workspace root, hedgehog, hedgehog-splitmix-wasm"
-echo "Changes committed"
+echo "Changes committed with [release] marker"
 echo ""
 echo "Next steps:"
 echo "  git push origin release/$NEW_VERSION"
-echo "  Create PR to main (tag will be created automatically after merge)"
+echo "  Create PR to main (publishing will happen automatically after merge)"
