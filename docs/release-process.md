@@ -25,7 +25,7 @@ This document outlines the process for releasing new versions of typescript-hedg
    This script will:
    - Bump version in all workspace packages (root, hedgehog, hedgehog-splitmix-wasm)
    - Update dependency references between packages
-   - Create a commit with message "Release X.Y.Z"
+   - Create a commit with message "Release X.Y.Z [release]"
 
 3. **Update the changelog**
    - Add release notes to CHANGELOG.md under the new version
@@ -42,12 +42,11 @@ This document outlines the process for releasing new versions of typescript-hedg
    - Get the PR reviewed and approved
    - Merge to main
 
-5. **Automatic tagging after merge**
+5. **Automatic publishing after merge**
    - After the release PR is merged to main, CI automatically:
-     - Detects the `release/X.Y.Z` branch name pattern
-     - Extracts the version from the branch name
-     - Creates and pushes the git tag
-     - Triggers the publish workflow
+     - Detects the `[release]` marker in the commit message
+     - Publishes packages to npm
+     - Creates a GitHub release
 
 ## Workspace structure
 
@@ -67,4 +66,4 @@ Tags use semantic version numbers without prefixes (e.g., `0.1.2`, not `v0.1.2`)
 - CI runs on all pushes and PRs
 - After release PRs are merged, CI automatically creates tags and publishes
 - The publish workflow uses `npm publish --workspace=<package>` for each package
-- Release detection happens via the `release/X.Y.Z` branch naming pattern
+- Release detection happens via the `[release]` marker in commit messages
