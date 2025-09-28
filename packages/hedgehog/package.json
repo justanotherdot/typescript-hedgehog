@@ -1,6 +1,6 @@
 {
   "name": "@justanotherdot/hedgehog",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Property-based testing library for TypeScript, inspired by Hedgehog",
   "type": "module",
   "main": "dist/index.js",
@@ -21,6 +21,10 @@
     "./seed/adaptive": {
       "types": "./dist/seed/adaptive.d.ts",
       "default": "./dist/seed/adaptive.js"
+    },
+    "./zod": {
+      "types": "./dist/gen/zod/index.d.ts",
+      "default": "./dist/gen/zod/index.js"
     }
   },
   "scripts": {
@@ -70,7 +74,7 @@
     }
   },
   "dependencies": {
-    "@justanotherdot/hedgehog-splitmix-wasm": "^0.1.1"
+    "@justanotherdot/hedgehog-splitmix-wasm": "^0.1.2"
   },
   "files": [
     "dist",

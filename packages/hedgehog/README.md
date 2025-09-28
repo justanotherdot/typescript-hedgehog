@@ -25,47 +25,56 @@ This library features a unique **AdaptiveSeed** implementation that is **used by
 ## Installation
 
 ```bash
-npm install hedgehog
+npm install @justanotherdot/hedgehog
+```
+
+For Zod integration (optional):
+```bash
+npm install @justanotherdot/hedgehog zod
 ```
 
 ## Quick start
 
 ```typescript
-import { forAll, Gen, int, string } from 'hedgehog';
+import { forAll, Gen, Config } from '@justanotherdot/hedgehog';
 
 // Define a property: reversing a list twice gives the original list
 const reverseTwiceProperty = forAll(
-  Gen.array(int(1, 100)),
+  Gen.array(Gen.number()),
   (list) => {
+    const original = [...list]; // Don't mutate original
     const reversed = list.reverse().reverse();
-    return JSON.stringify(reversed) === JSON.stringify(list);
+    return JSON.stringify(reversed) === JSON.stringify(original);
   }
 );
 
-// Test with complex data structures  
+// Test with complex data structures
 const userProperty = forAll(
   Gen.object({
-    id: int(1, 1000),
-    name: Gen.optional(string()),           // string | undefined
-    email: Gen.nullable(string()),          // string | null
+    id: Gen.number({ min: 1, max: 1000 }),
+    name: Gen.optional(Gen.string()),       // string | undefined
+    email: Gen.nullable(Gen.string()),      // string | null
     status: Gen.union(                      // 'active' | 'inactive' | 'pending'
-      Gen.constant('active'),
-      Gen.constant('inactive'), 
-      Gen.constant('pending')
+      Gen.literal('active'),
+      Gen.literal('inactive'),
+      Gen.literal('pending')
     )
   }),
   (user) => {
     // Property: user objects have valid structure
-    return typeof user.id === 'number' && 
-           user.id > 0 && 
+    return typeof user.id === 'number' &&
+           user.id > 0 &&
            ['active', 'inactive', 'pending'].includes(user.status);
   }
 );
 
 // Test the properties
-console.log('Reverse property:', reverseTwiceProperty.check().ok);
-console.log('User property:', userProperty.check().ok);
+const config = new Config(100); // Run 100 tests each
+console.log('Reverse property:', reverseTwiceProperty.run(config).type === 'pass' ? 'PASSED' : 'FAILED');
+console.log('User property:', userProperty.run(config).type === 'pass' ? 'PASSED' : 'FAILED');
 ```
+
+**See the [examples/](../../examples/) directory for more comprehensive examples including advanced configuration and real-world testing scenarios.**
 
 ## Core concepts
 
@@ -188,6 +197,63 @@ const rightValue = gen.generate(size, rightSeed).value;
 
 // Check what implementation is being used
 console.log(seed.getImplementation()); // 'wasm' | 'bigint' | 'bigint-fallback'
+```
+
+## Zod Integration
+
+Generate test data directly from your Zod schemas:
+
+```typescript
+import { z } from 'zod';
+import { forAll, Config } from '@justanotherdot/hedgehog';
+import { fromSchema } from '@justanotherdot/hedgehog/zod';
+
+// Define your schema
+const userSchema = z.object({
+  name: z.string(),
+  age: z.number().min(0).max(120),
+  email: z.string().email(),
+  active: z.boolean(),
+  tags: z.array(z.string()).max(5)
+});
+
+// Generate test data from schema
+const userGenerator = fromSchema(userSchema);
+
+// Property: generated data always validates
+const validationProperty = forAll(userGenerator, (user) => {
+  return userSchema.safeParse(user).success;
+});
+
+// Run the test
+const result = validationProperty.run(new Config(100));
+console.log('Schema validation:', result.type === 'pass' ? 'PASSED' : 'FAILED');
+
+// Sample generated data
+console.log('Sample user:', userGenerator.sample());
+// Output: { name: "hello", age: 42, email: "test@example.com", active: true, tags: ["tag1"] }
+```
+
+### Complex schemas
+
+Works with nested objects, unions, arrays, and all Zod features:
+
+```typescript
+const eventSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('login'),
+    userId: z.string().uuid(),
+    timestamp: z.date()
+  }),
+  z.object({
+    type: z.literal('logout'),
+    duration: z.number().positive()
+  })
+]);
+
+const eventGen = fromSchema(eventSchema);
+const event = eventGen.sample();
+// Generates either a login or logout event with proper types
 ```
 
 ## Performance optimization
@@ -474,7 +540,7 @@ See the [State Machine Testing Guide](docs/state-machine-testing.md) for complet
 
 ## Roadmap
 
-### Completed features ✅
+### Completed features
 
 - **Core property-based testing**: Generators, properties, shrinking
 - **High-performance random generation**: AdaptiveSeed with WASM optimization

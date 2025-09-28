@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { Gen } from '@/gen.js';
+import { fromSchema } from '../index.js';
 import { Size } from '@/data/size.js';
 import { Seed } from '@/data/seed.js';
 
 describe('New Zod types integration', () => {
   // Test helper to generate and validate a schema
   function testSchema<T>(schema: z.ZodSchema<T>, iterations = 5) {
-    const gen = Gen.fromSchema(schema);
+    const gen = fromSchema(schema);
 
     for (let i = 0; i < iterations; i++) {
       const size = Size.of(10); // Use smaller size for faster tests

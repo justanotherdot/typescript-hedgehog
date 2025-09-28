@@ -3,7 +3,8 @@ import { GeneratorFn } from './gen/core.js';
 import { Size, Range } from './data/size.js';
 import { Seed } from './data/seed.js';
 import { Tree } from './data/tree.js';
-import { fromSchema } from '@/gen/zod/core/zod.js';
+// Zod integration is now available via separate import
+// import { fromSchema } from '@justanotherdot/hedgehog/zod';
 import * as generators from './gen/generators.js';
 
 // Import generator functions
@@ -216,9 +217,14 @@ export class Gen<T> {
     return new Gen(generatorFn);
   }
 
-  // Zod schema integration
-  static fromSchema<T>(schema: any): Gen<T> {
-    return fromSchema(schema);
+  // Zod schema integration (moved to separate package)
+  // Use: import { fromSchema } from '@justanotherdot/hedgehog/zod'
+  static fromSchema<T>(_schema: any): Gen<T> {
+    throw new Error(
+      'Zod integration has been moved to a separate import.\n' +
+      'Use: import { fromSchema } from \'@justanotherdot/hedgehog/zod\'\n' +
+      'Make sure to install zod: npm install zod'
+    );
   }
 
   // Collection generators

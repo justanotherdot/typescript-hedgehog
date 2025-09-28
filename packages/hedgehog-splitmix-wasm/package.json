@@ -1,6 +1,6 @@
 {
   "name": "@justanotherdot/hedgehog-splitmix-wasm",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "WebAssembly bindings for SplitMix64 PRNG",
   "type": "module",
   "main": "pkg/hedgehog_splitmix_wasm.js",
