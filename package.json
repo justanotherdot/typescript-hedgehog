@@ -33,6 +33,7 @@
     "node": ">=20.16.0"
   },
   "devDependencies": {
+    "@types/node": "^24.5.2",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^8.0.0",

@@ -24,7 +24,7 @@ type Seed = [number, number] // SplitMix64 state
 
 ## Implementation phases
 
-### Phase 1: Core infrastructure ✅ **COMPLETED**
+### Phase 1: Core infrastructure **COMPLETED**
 
 **DONE:**
 - [x] Implement 64-bit SplitMix64 with BigInt for quality randomness
@@ -39,7 +39,7 @@ type Seed = [number, number] // SplitMix64 state
 - `src/data/tree.ts` - Rose tree structure
 - `src/gen.ts` - Core generator type and combinators
 
-### Phase 2: Basic generators ✅ **COMPLETED**
+### Phase 2: Basic generators **COMPLETED**
 
 **DONE:**
 - [x] Primitive generators (int, bool, string with shrinking)
@@ -51,7 +51,7 @@ type Seed = [number, number] // SplitMix64 state
 **Key files:**
 - `src/gen/primitive.ts` - Basic value generators with shrinking
 
-### Phase 3: Collection generators ✅ **COMPLETED**
+### Phase 3: Collection generators **COMPLETED**
 
 **DONE:**
 - [x] Array generators with size control
@@ -64,7 +64,7 @@ type Seed = [number, number] // SplitMix64 state
 - `src/gen/collection.ts` - Array and object generators
 - `src/gen/union.ts` - Union type generators
 
-### Phase 4: Property testing core ✅ **COMPLETED**
+### Phase 4: Property testing core **COMPLETED**
 
 **DONE:**
 - [x] Property definition and execution
@@ -93,7 +93,58 @@ type Seed = [number, number] // SplitMix64 state
 - `src/async.ts` - Promise-based testing
 - `src/state.ts` - State machine testing
 
-### Phase 6: Ecosystem integration
+### Phase 6: Concurrent and parallel testing **IN PROGRESS**
+
+**Critical for multi-client sync testing - Core infrastructure implemented**
+
+**6.1 Parallel property execution:**
+- [ ] `ParallelProperty<T, F>` - Distribute tests across multiple threads
+- [ ] Work distribution strategies (round-robin, chunk-based, work-stealing)
+- [ ] Performance metrics (speedup factor, thread efficiency)
+- [ ] Thread failure handling and aggregation
+
+**6.2 Concurrent testing for race condition detection:**
+- [ ] `ConcurrentProperty<T, F>` - Test same input simultaneously from multiple threads
+- [ ] Determinism analysis and race condition detection
+- [ ] Deadlock detection with configurable timeouts
+- [ ] Non-deterministic behavior identification
+
+**6.3 Systematic interleaving exploration:**
+- [ ] `InterleavingExplorer<T, F>` - Systematic exploration of thread scheduling orders
+- [ ] Pattern analysis for failing interleavings
+- [ ] Controlled scheduling simulation
+- [ ] Race condition pattern identification
+
+**6.4 Concurrent scenario DSL:**
+- [ ] `ConcurrentScenario<T>` builder for complex multi-operation testing
+- [ ] Operation dependencies, barriers, and constraints
+- [ ] Interleaving constraints (before/after, atomic, exclusive, one-of)
+- [ ] Scenario execution with constraint validation
+
+**6.5 Load testing and stress testing:**
+- [ ] `LoadGenerator<T, F>` for high-throughput stress testing
+- [ ] Configurable load patterns (ramp-up, steady-state, cool-down)
+- [ ] Performance metrics (ops/sec, response times, percentiles)
+- [ ] Resource utilization monitoring
+
+**6.6 Multi-client sync testing integration:**
+- [ ] Helper functions for testing concurrent command streams
+- [ ] State convergence verification across multiple instances
+- [ ] Conflict resolution testing patterns
+- [ ] Network partition simulation
+
+**Key files:**
+- `src/parallel.ts` - Parallel execution infrastructure **CREATED**
+- `src/concurrent.ts` - Concurrent testing and race condition detection **CREATED**
+- `src/interleaving.ts` - Systematic interleaving exploration **CREATED**
+- `src/worker.ts` - Worker thread infrastructure **CREATED**
+- `src/scenario.ts` - Concurrent scenario DSL
+- `src/load.ts` - Load generation and stress testing
+- `examples/multi-client-sync.ts` - Multi-client sync testing examples
+
+**Reference implementation:** Based on Rust hedgehog's comprehensive concurrent testing framework
+
+### Phase 7: Ecosystem integration
 
 **TODO:**
 - [ ] Jest integration and custom matchers
