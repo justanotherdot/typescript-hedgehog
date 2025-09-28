@@ -25,6 +25,10 @@
     "./zod": {
       "types": "./dist/gen/zod/index.d.ts",
       "default": "./dist/gen/zod/index.js"
+    },
+    "./experimental": {
+      "types": "./dist/experimental.d.ts",
+      "default": "./dist/experimental.js"
     }
   },
   "scripts": {

@@ -93,7 +93,57 @@ type Seed = [number, number] // SplitMix64 state
 - `src/async.ts` - Promise-based testing
 - `src/state.ts` - State machine testing
 
-### Phase 6: Ecosystem integration
+### Phase 6: Concurrent and parallel testing
+
+**TODO: High Priority - Critical for multi-client sync testing**
+
+**6.1 Parallel property execution:**
+- [ ] `ParallelProperty<T, F>` - Distribute tests across multiple threads
+- [ ] Work distribution strategies (round-robin, chunk-based, work-stealing)
+- [ ] Performance metrics (speedup factor, thread efficiency)
+- [ ] Thread failure handling and aggregation
+
+**6.2 Concurrent testing for race condition detection:**
+- [ ] `ConcurrentProperty<T, F>` - Test same input simultaneously from multiple threads
+- [ ] Determinism analysis and race condition detection
+- [ ] Deadlock detection with configurable timeouts
+- [ ] Non-deterministic behavior identification
+
+**6.3 Systematic interleaving exploration:**
+- [ ] `InterleavingExplorer<T, F>` - Systematic exploration of thread scheduling orders
+- [ ] Pattern analysis for failing interleavings
+- [ ] Controlled scheduling simulation
+- [ ] Race condition pattern identification
+
+**6.4 Concurrent scenario DSL:**
+- [ ] `ConcurrentScenario<T>` builder for complex multi-operation testing
+- [ ] Operation dependencies, barriers, and constraints
+- [ ] Interleaving constraints (before/after, atomic, exclusive, one-of)
+- [ ] Scenario execution with constraint validation
+
+**6.5 Load testing and stress testing:**
+- [ ] `LoadGenerator<T, F>` for high-throughput stress testing
+- [ ] Configurable load patterns (ramp-up, steady-state, cool-down)
+- [ ] Performance metrics (ops/sec, response times, percentiles)
+- [ ] Resource utilization monitoring
+
+**6.6 Multi-client sync testing integration:**
+- [ ] Helper functions for testing concurrent command streams
+- [ ] State convergence verification across multiple instances
+- [ ] Conflict resolution testing patterns
+- [ ] Network partition simulation
+
+**Key files:**
+- `src/parallel.ts` - Parallel execution infrastructure
+- `src/concurrent.ts` - Concurrent testing and race condition detection
+- `src/interleaving.ts` - Systematic interleaving exploration
+- `src/scenario.ts` - Concurrent scenario DSL
+- `src/load.ts` - Load generation and stress testing
+- `examples/multi-client-sync.ts` - Multi-client sync testing examples
+
+**Reference implementation:** Based on Rust hedgehog's comprehensive concurrent testing framework
+
+### Phase 7: Ecosystem integration
 
 **TODO:**
 - [ ] Jest integration and custom matchers
