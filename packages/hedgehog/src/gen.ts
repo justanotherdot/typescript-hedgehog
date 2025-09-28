@@ -161,7 +161,24 @@ export class Gen<T> {
     return new Gen(generators.constant(value));
   }
 
-  static oneOf<T>(genList: Gen<T>[]): Gen<T> {
+  static oneOf<T>(genListOrFirst?: Gen<T>[] | Gen<T>, ...rest: Gen<T>[]): Gen<T> {
+    let genList: Gen<T>[];
+
+    if (genListOrFirst === undefined) {
+      // Called with spread of empty array: Gen.oneOf(...[])
+      genList = [];
+    } else if (Array.isArray(genListOrFirst)) {
+      // Called with array: Gen.oneOf([gen1, gen2])
+      genList = genListOrFirst;
+    } else {
+      // Called with spread: Gen.oneOf(gen1, gen2)
+      genList = [genListOrFirst, ...rest];
+    }
+
+    if (genList.length === 0) {
+      throw new Error('oneOf requires at least one generator');
+    }
+
     const generatorFns = genList.map((g) => g.generator);
     return new Gen(generators.oneOf(generatorFns));
   }
