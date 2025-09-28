@@ -17,7 +17,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'package.json'
+          node-version-file: '.nvmrc'
           cache: 'npm'
       
       - name: Install dependencies
@@ -36,7 +36,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'package.json'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Set up Rust
@@ -53,7 +53,7 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            hedgehog-splitmix-wasm/target/
+            packages/hedgehog-splitmix-wasm/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
@@ -62,7 +62,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/wasm-pack
-          key: ${{ runner.os }}-wasm-pack-${{ hashFiles('hedgehog-splitmix-wasm/Cargo.toml', 'hedgehog-splitmix-wasm/Cargo.lock') }}
+          key: ${{ runner.os }}-wasm-pack-${{ hashFiles('packages/hedgehog-splitmix-wasm/Cargo.toml', 'packages/hedgehog-splitmix-wasm/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-wasm-pack-
 
@@ -91,7 +91,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'package.json'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Set up Rust
@@ -108,7 +108,7 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            hedgehog-splitmix-wasm/target/
+            packages/hedgehog-splitmix-wasm/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
@@ -117,7 +117,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/wasm-pack
-          key: ${{ runner.os }}-wasm-pack-${{ hashFiles('hedgehog-splitmix-wasm/Cargo.toml', 'hedgehog-splitmix-wasm/Cargo.lock') }}
+          key: ${{ runner.os }}-wasm-pack-${{ hashFiles('packages/hedgehog-splitmix-wasm/Cargo.toml', 'packages/hedgehog-splitmix-wasm/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-wasm-pack-
 
@@ -147,7 +147,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'package.json'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Set up Rust
@@ -164,7 +164,7 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            hedgehog-splitmix-wasm/target/
+            packages/hedgehog-splitmix-wasm/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
@@ -173,7 +173,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/wasm-pack
-          key: ${{ runner.os }}-wasm-pack-${{ hashFiles('hedgehog-splitmix-wasm/Cargo.toml', 'hedgehog-splitmix-wasm/Cargo.lock') }}
+          key: ${{ runner.os }}-wasm-pack-${{ hashFiles('packages/hedgehog-splitmix-wasm/Cargo.toml', 'packages/hedgehog-splitmix-wasm/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-wasm-pack-
 
@@ -202,7 +202,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'package.json'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Set up Rust
@@ -219,7 +219,7 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            hedgehog-splitmix-wasm/target/
+            packages/hedgehog-splitmix-wasm/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
@@ -228,7 +228,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/wasm-pack
-          key: ${{ runner.os }}-wasm-pack-${{ hashFiles('hedgehog-splitmix-wasm/Cargo.toml', 'hedgehog-splitmix-wasm/Cargo.lock') }}
+          key: ${{ runner.os }}-wasm-pack-${{ hashFiles('packages/hedgehog-splitmix-wasm/Cargo.toml', 'packages/hedgehog-splitmix-wasm/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-wasm-pack-
 

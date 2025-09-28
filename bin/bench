@@ -1,8 +1,7 @@
 #!/bin/sh -eu
 
-# Performance benchmarks for Hedgehog implementations
+# Benchmark script for hedgehog package
+WORKSPACE_ROOT=$(git rev-parse --show-toplevel)
+cd "$WORKSPACE_ROOT"
 
-# Suppress experimental WebAssembly warnings from @justanotherdot/hedgehog-splitmix-wasm
-# The WASM module uses experimental WebAssembly features but they are stable in practice
-# and have been working reliably for years. Safe to suppress this warning.
-NODE_OPTIONS="--no-warnings=ExperimentalWarning" npx vitest run --config vitest.bench.config.ts --reporter=verbose
+npm run bench --workspace=@justanotherdot/hedgehog

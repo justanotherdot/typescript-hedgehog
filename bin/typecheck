@@ -1,4 +1,7 @@
 #!/bin/sh -eu
 
-# Type check all TypeScript files except benchmark files (configured in tsconfig.json)
-npm exec tsc -- --noEmit
+# Type check script for hedgehog package
+WORKSPACE_ROOT=$(git rev-parse --show-toplevel)
+cd "$WORKSPACE_ROOT"
+
+npm run typecheck --workspace=@justanotherdot/hedgehog

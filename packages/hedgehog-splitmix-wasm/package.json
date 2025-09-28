@@ -1,0 +1,36 @@
+{
+  "name": "@justanotherdot/hedgehog-splitmix-wasm",
+  "version": "0.1.1",
+  "description": "WebAssembly bindings for SplitMix64 PRNG",
+  "type": "module",
+  "main": "pkg/hedgehog_splitmix_wasm.js",
+  "types": "pkg/hedgehog_splitmix_wasm.d.ts",
+  "scripts": {
+    "build": "../../bin/build-wasm",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/justanotherdot/typescript-hedgehog.git",
+    "directory": "packages/hedgehog-splitmix-wasm"
+  },
+  "homepage": "https://github.com/justanotherdot/typescript-hedgehog#readme",
+  "bugs": {
+    "url": "https://github.com/justanotherdot/typescript-hedgehog/issues"
+  },
+  "author": "Ryan James Spencer <spencer.ryanjames@gmail.com>",
+  "license": "BSD-3-Clause",
+  "files": [
+    "pkg/hedgehog_splitmix_wasm_bg.wasm",
+    "pkg/hedgehog_splitmix_wasm.js",
+    "pkg/hedgehog_splitmix_wasm_bg.js",
+    "pkg/hedgehog_splitmix_wasm.d.ts"
+  ],
+  "sideEffects": [
+    "./pkg/hedgehog_splitmix_wasm.js",
+    "./pkg/snippets/*"
+  ],
+  "engines": {
+    "node": ">=20.16.0"
+  }
+}

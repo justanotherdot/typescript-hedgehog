@@ -1,0 +1,80 @@
+{
+  "name": "@justanotherdot/hedgehog",
+  "version": "0.1.1",
+  "description": "Property-based testing library for TypeScript, inspired by Hedgehog",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./seed/bigint": {
+      "types": "./dist/seed/bigint.d.ts",
+      "default": "./dist/seed/bigint.js"
+    },
+    "./seed/wasm": {
+      "types": "./dist/seed/wasm.d.ts",
+      "default": "./dist/seed/wasm.js"
+    },
+    "./seed/adaptive": {
+      "types": "./dist/seed/adaptive.d.ts",
+      "default": "./dist/seed/adaptive.js"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc && tsc-alias",
+    "test": "NODE_OPTIONS=\"--no-warnings=ExperimentalWarning\" vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint --fix \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "bench": "vitest bench --run",
+    "prepublishOnly": "npm run build && NODE_OPTIONS=\"--no-warnings=ExperimentalWarning\" npm test && npm run lint",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "property-based-testing",
+    "property-testing",
+    "testing",
+    "hedgehog",
+    "typescript",
+    "generators",
+    "quickcheck",
+    "fuzzing",
+    "shrinking",
+    "state-machine-testing",
+    "random-testing"
+  ],
+  "author": "Ryan James Spencer <spencer.ryanjames@gmail.com>",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/justanotherdot/typescript-hedgehog.git",
+    "directory": "packages/hedgehog"
+  },
+  "homepage": "https://github.com/justanotherdot/typescript-hedgehog#readme",
+  "bugs": {
+    "url": "https://github.com/justanotherdot/typescript-hedgehog/issues"
+  },
+  "engines": {
+    "node": ">=20.16.0"
+  },
+  "peerDependencies": {
+    "zod": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "zod": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@justanotherdot/hedgehog-splitmix-wasm": "^0.1.1"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ]
+}

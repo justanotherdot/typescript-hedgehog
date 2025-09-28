@@ -18,7 +18,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version-file: 'package.json'
+        node-version-file: '.nvmrc'
         cache: 'npm'
         registry-url: 'https://registry.npmjs.org'
 
@@ -36,7 +36,7 @@ jobs:
           ~/.cargo/registry/index/
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
-          hedgehog-splitmix-wasm/target/
+          packages/hedgehog-splitmix-wasm/target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
@@ -45,7 +45,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.cargo/bin/wasm-pack
-        key: ${{ runner.os }}-wasm-pack-${{ hashFiles('hedgehog-splitmix-wasm/Cargo.toml', 'hedgehog-splitmix-wasm/Cargo.lock') }}
+        key: ${{ runner.os }}-wasm-pack-${{ hashFiles('packages/hedgehog-splitmix-wasm/Cargo.toml', 'packages/hedgehog-splitmix-wasm/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-wasm-pack-
 
@@ -58,90 +58,29 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Build WASM package
-      run: npm run build:wasm
-
-    - name: Build main package
-      run: npm run build
-
-    - name: Upload WASM artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: wasm-pkg
-        path: hedgehog-splitmix-wasm/pkg/
-
-    - name: Upload main package artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: main-pkg
-        path: |
-          dist/
-          package.json
-          README.md
-          LICENSE
-
-  publish-wasm:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        registry-url: 'https://registry.npmjs.org'
-
-    - name: Download WASM artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: wasm-pkg
-        path: pkg/
+    - name: Build packages
+      run: npm run build:all
 
     - name: Verify WASM package (dry-run)
-      run: cd pkg && npm publish --dry-run
+      run: npm publish --workspace=@justanotherdot/hedgehog-splitmix-wasm --dry-run
+
+    - name: Verify main package (dry-run)
+      run: npm publish --workspace=@justanotherdot/hedgehog --dry-run
 
     - name: Publish WASM package
       if: github.ref_name == 'main'
-      run: cd pkg && npm publish --provenance --access public
+      run: npm publish --workspace=@justanotherdot/hedgehog-splitmix-wasm --provenance --access public
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  publish-main:
-    needs: [build, publish-wasm]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        registry-url: 'https://registry.npmjs.org'
-
-    - name: Download main package artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: main-pkg
-
-    - name: Verify main package (dry-run)
-      run: npm publish --dry-run
-
     - name: Publish main package
       if: github.ref_name == 'main'
-      run: npm publish --provenance --access public
+      run: npm publish --workspace=@justanotherdot/hedgehog --provenance --access public
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   create-release:
-    needs: [publish-main]
+    needs: [build]
     runs-on: ubuntu-latest
     permissions:
       contents: write

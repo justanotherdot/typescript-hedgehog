@@ -1,0 +1,4 @@
+#!/bin/sh -eu
+
+prettier --write "src/**/*.ts"
+eslint src --ext .ts --fix

@@ -41,9 +41,9 @@ pids
 *.temp
 
 # Rust/WASM build artifacts
-hedgehog-splitmix-wasm/target/
-hedgehog-splitmix-wasm/pkg/
-hedgehog-splitmix-wasm/Cargo.lock
+packages/hedgehog-splitmix-wasm/target/
+packages/hedgehog-splitmix-wasm/pkg/
+packages/hedgehog-splitmix-wasm/Cargo.lock
 
 # Performance profiling artifacts
 *.cpuprofile

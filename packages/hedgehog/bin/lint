@@ -1,0 +1,4 @@
+#!/bin/sh -eu
+
+npx prettier --check "src/**/*.ts"
+npx eslint src --ext .ts

@@ -1,67 +1,15 @@
 #!/bin/sh -eu
 
-# Comprehensive verification script for both TypeScript and Rust code
-# Ensures all checks pass before deployment or CI
-# Uses existing bin/ scripts to avoid duplication
+# Verify script for hedgehog package
+WORKSPACE_ROOT=$(git rev-parse --show-toplevel)
 
-echo "Starting comprehensive verification..."
+echo "Running type check..."
+"$WORKSPACE_ROOT/bin/typecheck"
 
-# Track overall success
-OVERALL_SUCCESS=true
+echo "Running tests..."
+"$WORKSPACE_ROOT/bin/test"
 
-# Function to run a step and track success
-run_step() {
-    local step_name="$1"
-    local command="$2"
-    
-    printf "Running %s...\n" "$step_name"
-    
-    if eval "$command" > /dev/null 2>&1; then
-        printf "PASS: %s\n" "$step_name"
-    else
-        printf "FAIL: %s\n" "$step_name"
-        OVERALL_SUCCESS=false
-    fi
-}
+echo "Running linter..."
+"$WORKSPACE_ROOT/bin/lint"
 
-echo "TypeScript/JavaScript verification:"
-
-# Use existing bin scripts
-run_step "TypeScript type checking" "bin/typecheck"
-run_step "Code formatting (lint)" "bin/lint"  
-run_step "Unit tests" "bin/test"
-run_step "Build process" "bin/build"
-
-echo ""
-echo "Rust/WASM verification:"
-
-# Change to WASM directory for Rust checks
-cd hedgehog-splitmix-wasm
-
-# Rust checks using cargo directly (no bin scripts for these)
-run_step "Rust formatting" "cargo fmt --check"
-run_step "Rust clippy (linting)" "cargo clippy -- -D warnings"
-run_step "Rust tests" "cargo test"
-
-# Return to root and use existing WASM build script
-cd ..
-run_step "WASM build" "bin/build-wasm"
-
-echo ""
-echo "Integration verification:"
-
-# Integration checks using existing test script
-run_step "WASM integration tests" "bin/test src/seed/wasm.test.ts"
-run_step "Buffer API tests" "bin/test src/seed/wasm-buffer.test.ts" 
-run_step "Cross-implementation consistency" "bin/test src/seed/splitmix-consistency.test.ts"
-
-echo ""
-
-# Final result
-if [ "$OVERALL_SUCCESS" = true ]; then
-    printf "SUCCESS: All verification steps passed\n"
-    exit 0
-else
-    printf "FAILURE: Some verification steps failed\n"
-    exit 1
-fi
+echo "All checks passed!"

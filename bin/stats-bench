@@ -1,10 +1,7 @@
 #!/bin/sh -eu
 
-# Statistical performance benchmarks with proper isolation
+# Statistical benchmark script for hedgehog package
+WORKSPACE_ROOT=$(git rev-parse --show-toplevel)
+cd "$WORKSPACE_ROOT"
 
-echo "Running statistical performance analysis..."
-echo "This may take several minutes due to rigorous sampling..."
-echo ""
-
-# Run with garbage collection enabled for better memory management
-npx vitest run src/seed/statistical-benchmark.test.ts --reporter=verbose
+npm run bench --workspace=@justanotherdot/hedgehog -- src/seed/statistical-benchmark.bench.ts

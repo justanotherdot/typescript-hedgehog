@@ -1,13 +1,7 @@
 #!/bin/sh -eu
 
-# Performance profiling for Hedgehog implementations
+# Profile script for hedgehog package
+WORKSPACE_ROOT=$(git rev-parse --show-toplevel)
+cd "$WORKSPACE_ROOT"
 
-# Run with CPU profiling
-echo "Running performance profiling..."
-npx vitest run src/seed/profile.test.ts --reporter=verbose
-
-echo ""
-echo "For advanced profiling:"
-echo "  CPU profile: node --cpu-prof node_modules/.bin/vitest run src/seed/profile.test.ts"
-echo "  Heap profile: node --heap-prof node_modules/.bin/vitest run src/seed/profile.test.ts"
-echo "  V8 profile: node --prof node_modules/.bin/vitest run src/seed/profile.test.ts"
+npm run bench --workspace=@justanotherdot/hedgehog -- src/seed/profile.bench.ts

@@ -1,6 +1,11 @@
 #!/bin/sh -eu
 
-rm -rf dist
-bin/typecheck
-npm exec tsc
-npm exec tsc-alias
+# Build script for hedgehog package
+WORKSPACE_ROOT=$(git rev-parse --show-toplevel)
+cd "$WORKSPACE_ROOT"
+
+# Run typecheck first
+npm run typecheck --workspace=@justanotherdot/hedgehog
+
+# Then build
+npm run build --workspace=@justanotherdot/hedgehog

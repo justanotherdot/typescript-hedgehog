@@ -1,4 +1,7 @@
 #!/bin/sh -eu
 
-npx prettier --check "src/**/*.ts"
-npx eslint src --ext .ts
+# Lint script for hedgehog package
+WORKSPACE_ROOT=$(git rev-parse --show-toplevel)
+cd "$WORKSPACE_ROOT"
+
+npm run lint --workspace=@justanotherdot/hedgehog
