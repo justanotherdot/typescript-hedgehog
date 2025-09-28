@@ -1,55 +1,24 @@
 {
-  "name": "@justanotherdot/hedgehog",
-  "version": "0.1.0",
-  "description": "Property-based testing library for TypeScript, inspired by Hedgehog",
+  "name": "typescript-hedgehog-workspace",
+  "version": "0.1.1",
+  "private": true,
+  "description": "Workspace root for typescript-hedgehog packages",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./seed/bigint": {
-      "types": "./dist/seed/bigint.d.ts",
-      "default": "./dist/seed/bigint.js"
-    },
-    "./seed/wasm": {
-      "types": "./dist/seed/wasm.d.ts",
-      "default": "./dist/seed/wasm.js"
-    },
-    "./seed/adaptive": {
-      "types": "./dist/seed/adaptive.d.ts",
-      "default": "./dist/seed/adaptive.js"
-    }
-  },
-  "scripts": {
-    "build": "bin/build",
-    "build:wasm": "bin/build-wasm",
-    "test": "bin/test",
-    "test:watch": "vitest",
-    "lint": "bin/lint",
-    "lint:fix": "bin/lint:fix",
-    "typecheck": "bin/typecheck",
-    "bench": "bin/bench",
-    "prepublishOnly": "npm run build:wasm && npm run build && NODE_OPTIONS=\"--no-warnings=ExperimentalWarning\" npm test && npm run lint",
-    "prepack": "npm run build:wasm && npm run build"
-  },
-  "keywords": [
-    "property-based-testing",
-    "property-testing",
-    "testing",
-    "hedgehog",
-    "typescript",
-    "generators",
-    "quickcheck",
-    "fuzzing",
-    "shrinking",
-    "state-machine-testing",
-    "random-testing"
+  "workspaces": [
+    "packages/*"
   ],
-  "author": "Ryan James Spencer <spencer.ryanjames@gmail.com>",
-  "license": "BSD-3-Clause",
+  "scripts": {
+    "build": "npm run build --workspace=@justanotherdot/hedgehog",
+    "build:wasm": "npm run build --workspace=@justanotherdot/hedgehog-splitmix-wasm",
+    "build:all": "npm run build:wasm && npm run build",
+    "test": "npm run test --workspace=@justanotherdot/hedgehog",
+    "test:watch": "npm run test:watch --workspace=@justanotherdot/hedgehog",
+    "lint": "npm run lint --workspace=@justanotherdot/hedgehog",
+    "lint:fix": "npm run lint:fix --workspace=@justanotherdot/hedgehog",
+    "typecheck": "npm run typecheck --workspace=@justanotherdot/hedgehog",
+    "bench": "npm run bench --workspace=@justanotherdot/hedgehog",
+    "release": "bin/release"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/justanotherdot/typescript-hedgehog.git"
@@ -58,19 +27,10 @@
   "bugs": {
     "url": "https://github.com/justanotherdot/typescript-hedgehog/issues"
   },
+  "author": "Ryan James Spencer <spencer.ryanjames@gmail.com>",
+  "license": "BSD-3-Clause",
   "engines": {
     "node": ">=20.16.0"
-  },
-  "peerDependencies": {
-    "zod": "^3.0.0"
-  },
-  "peerDependenciesMeta": {
-    "zod": {
-      "optional": true
-    }
-  },
-  "dependencies": {
-    "@justanotherdot/hedgehog-splitmix-wasm": "^0.1.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.0.0",
@@ -78,14 +38,10 @@
     "eslint": "^8.0.0",
     "eslint-plugin-import": "^2.29.0",
     "prettier": "^3.0.0",
+    "tsc-alias": "^1.8.16",
     "typescript": "^5.0.0",
     "vite-plugin-wasm": "^3.5.0",
     "vitest": "^1.0.0",
     "zod": "^3.23.8"
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ]
+  }
 }

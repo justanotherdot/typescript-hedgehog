@@ -1,0 +1,6 @@
+#!/bin/sh -eu
+
+rm -rf dist
+bin/typecheck
+npm exec tsc
+npm exec tsc-alias

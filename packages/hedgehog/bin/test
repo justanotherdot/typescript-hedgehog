@@ -1,0 +1,6 @@
+#!/bin/sh -eu
+
+# Suppress experimental WebAssembly warnings from @justanotherdot/hedgehog-splitmix-wasm
+# The WASM module uses experimental WebAssembly features but they are stable in practice
+# and have been working reliably for years. Safe to suppress this warning.
+NODE_OPTIONS="--no-warnings=ExperimentalWarning" npx vitest run --exclude="**/*.bench.ts"

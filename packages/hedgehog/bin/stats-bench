@@ -1,0 +1,10 @@
+#!/bin/sh -eu
+
+# Statistical performance benchmarks with proper isolation
+
+echo "Running statistical performance analysis..."
+echo "This may take several minutes due to rigorous sampling..."
+echo ""
+
+# Run with garbage collection enabled for better memory management
+npx vitest run src/seed/statistical-benchmark.test.ts --reporter=verbose

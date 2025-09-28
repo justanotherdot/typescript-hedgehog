@@ -1,66 +1,15 @@
 #!/bin/sh -eu
 
-# Release script - bumps version and creates release commit
-# Usage: bin/release [patch|minor|major]
+# Release script for workspace packages
+WORKSPACE_ROOT=$(git rev-parse --show-toplevel)
+cd "$WORKSPACE_ROOT"
 
-BUMP_TYPE=${1:-patch}
+# First build and publish the WASM package
+echo "Building and publishing WASM package..."
+npm run build --workspace=@justanotherdot/hedgehog-splitmix-wasm
+npm publish --workspace=@justanotherdot/hedgehog-splitmix-wasm
 
-if [ "$BUMP_TYPE" != "patch" ] && [ "$BUMP_TYPE" != "minor" ] && [ "$BUMP_TYPE" != "major" ]; then
-    echo "Usage: bin/release [patch|minor|major]"
-    echo "  patch: 0.1.0 -> 0.1.1"
-    echo "  minor: 0.1.0 -> 0.2.0"
-    echo "  major: 0.1.0 -> 1.0.0"
-    exit 1
-fi
-
-# Get current version from package.json
-CURRENT_VERSION=$(node -p "require('./package.json').version")
-echo "Current version: $CURRENT_VERSION"
-
-# Calculate new version
-case $BUMP_TYPE in
-    patch)
-        NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
-        ;;
-    minor)
-        NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{$(NF-1) = $(NF-1) + 1; $NF = 0;} 1' | sed 's/ /./g')
-        ;;
-    major)
-        NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{$1 = $1 + 1; $2 = 0; $3 = 0;} 1' | sed 's/ /./g')
-        ;;
-esac
-
-echo "New version: $NEW_VERSION"
-
-# Update package.json
-sed -i.bak "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" package.json
-rm -f package.json.bak
-
-# Update WASM package.json
-sed -i.bak "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" hedgehog-splitmix-wasm/pkg/package.json
-rm -f hedgehog-splitmix-wasm/pkg/package.json.bak
-
-# Update dependency reference in main package.json
-sed -i.bak "s/@justanotherdot\/hedgehog-splitmix-wasm\": \"^$CURRENT_VERSION\"/@justanotherdot\/hedgehog-splitmix-wasm\": \"^$NEW_VERSION\"/" package.json
-rm -f package.json.bak
-
-# Run pre-release checks
-echo "Running pre-release checks..."
-npm run build:wasm
-npm run build
-npm run typecheck
-NODE_OPTIONS="--no-warnings=ExperimentalWarning" npm test
-npm run lint
-
-# Create release commit with proper format
-git add package.json hedgehog-splitmix-wasm/pkg/package.json
-git commit -m "Release $NEW_VERSION [release]"
-
-# Create git tag
-git tag "$NEW_VERSION"
-
-echo "Version bumped to $NEW_VERSION"
-echo "Release commit and tag created"
-echo "To publish:"
-echo "  git push origin main --tags"
-echo "  npm publish"
+# Then build and publish the main package
+echo "Building and publishing main package..."
+npm run build --workspace=@justanotherdot/hedgehog
+npm publish --workspace=@justanotherdot/hedgehog

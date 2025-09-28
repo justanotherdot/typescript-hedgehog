@@ -1,0 +1,4 @@
+#!/bin/sh -eu
+
+# Type check all TypeScript files except benchmark files (configured in tsconfig.json)
+npm exec tsc -- --noEmit

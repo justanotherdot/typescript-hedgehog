@@ -16,13 +16,13 @@ module.exports = {
     'no-trailing-spaces': 'error',
     'eol-last': 'error',
     'no-unused-vars': 'off',
-    '@typescript-eslint/no-unused-vars': ['error', { 
+    '@typescript-eslint/no-unused-vars': ['error', {
       argsIgnorePattern: '^_',
       varsIgnorePattern: '^_',
       caughtErrorsIgnorePattern: '^_',
       ignoreRestSiblings: true
     }],
-    
+
     // Code quality
     'no-console': 'warn',
     'no-debugger': 'error',
