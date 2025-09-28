@@ -1,0 +1,58 @@
+#!/bin/sh -eu
+
+# Release version bump script for workspace packages
+WORKSPACE_ROOT=$(git rev-parse --show-toplevel)
+cd "$WORKSPACE_ROOT"
+
+# Check if bump type argument is provided
+if [ $# -eq 0 ]; then
+    echo "Usage: bin/release-version-bump {patch|minor|major}"
+    echo "Example: bin/release-version-bump patch"
+    exit 1
+fi
+
+BUMP_TYPE="$1"
+
+# Validate bump type
+case "$BUMP_TYPE" in
+    patch|minor|major)
+        ;;
+    *)
+        echo "Error: Invalid bump type '$BUMP_TYPE'. Must be patch, minor, or major."
+        exit 1
+        ;;
+esac
+
+echo "Performing $BUMP_TYPE version bump across workspace packages..."
+
+# Update workspace root package.json
+echo "Updating workspace root package.json..."
+npm version "$BUMP_TYPE" --no-git-tag-version
+
+# Update hedgehog package
+echo "Updating hedgehog package..."
+npm version "$BUMP_TYPE" --workspace=@justanotherdot/hedgehog --no-git-tag-version
+
+# Update WASM package
+echo "Updating WASM package..."
+npm version "$BUMP_TYPE" --workspace=@justanotherdot/hedgehog-splitmix-wasm --no-git-tag-version
+
+# Get the new version from the workspace root package.json
+NEW_VERSION=$(npm pkg get version | tr -d '"')
+
+# Update dependency reference in hedgehog package
+echo "Updating WASM dependency reference in hedgehog package..."
+cd packages/hedgehog
+npm pkg set dependencies.@justanotherdot/hedgehog-splitmix-wasm="^$NEW_VERSION"
+cd "$WORKSPACE_ROOT"
+
+# Create commit
+git commit -am "Release $NEW_VERSION"
+
+echo "$BUMP_TYPE version bump completed: $NEW_VERSION"
+echo "Packages updated: workspace root, hedgehog, hedgehog-splitmix-wasm"
+echo "Changes committed"
+echo ""
+echo "Next steps:"
+echo "  git push origin release/$NEW_VERSION"
+echo "  Create PR to main (tag will be created automatically after merge)"
