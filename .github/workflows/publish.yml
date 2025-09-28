@@ -65,9 +65,11 @@ jobs:
       run: npm run build:all
 
     - name: Verify WASM package (dry-run)
+      if: github.ref_name == 'test-release'
       run: npm publish --workspace=@justanotherdot/hedgehog-splitmix-wasm --dry-run
 
     - name: Verify main package (dry-run)
+      if: github.ref_name == 'test-release'
       run: npm publish --workspace=@justanotherdot/hedgehog --dry-run
 
     - name: Publish WASM package
