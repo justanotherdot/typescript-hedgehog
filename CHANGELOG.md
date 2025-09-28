@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [0.1.2] - 2025-09-28
+
+### Breaking Changes
+- Zod integration moved to separate import: `import { fromSchema } from '@justanotherdot/hedgehog/zod'`
+- `Gen.fromSchema()` now throws helpful error directing users to new import
+
+### Fixed
+- **CRITICAL**: Fixed WASM module format issue preventing package usage in ES module environments
+- **CRITICAL**: Made zod dependency truly optional - package now works without installing zod
+- WASM package now generates proper ES modules instead of CommonJS syntax
+
+### Added
+- Separate zod entry point at `@justanotherdot/hedgehog/zod` for optional zod integration
+- Clear error messages when zod features are used without zod installed
+- Improved package exports for better module resolution
+- Comprehensive examples directory with basic usage, advanced configuration, and Zod integration
+- Updated README with correct v0.1.2 API usage and practical examples
+- Documentation for proper Config usage and property testing patterns
+
 ## [0.1.1] - 2025-09-28
 
 ### Changed
@@ -32,5 +51,6 @@
 - Bulk operations show significant speedups in benchmarks (see `npm run bench`)
 - WebAssembly implementation available for CPU-intensive workloads
 
+[0.1.2]: https://github.com/justanotherdot/typescript-hedgehog/releases/tag/0.1.2
 [0.1.1]: https://github.com/justanotherdot/typescript-hedgehog/releases/tag/0.1.1
 [0.1.0]: https://github.com/justanotherdot/typescript-hedgehog/releases/tag/0.1.0

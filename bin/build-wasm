@@ -12,4 +12,4 @@ if ! command -v wasm-pack >/dev/null 2>&1; then
 fi
 
 # Build the WASM package
-wasm-pack build --target nodejs --scope justanotherdot
+wasm-pack build --target bundler --scope justanotherdot

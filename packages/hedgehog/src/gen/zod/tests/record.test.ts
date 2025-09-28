@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { Gen } from '@/gen.js';
+import { fromSchema } from '../index.js';
 import { Size } from '@/data/size.js';
 import { Seed } from '@/data/seed.js';
 
 describe('Record type generation', () => {
   it('generates basic record with string keys', () => {
     const schema = z.record(z.number());
-    const gen = Gen.fromSchema(schema);
+    const gen = fromSchema(schema);
 
     const tree = gen.generate(Size.of(10), Seed.fromNumber(42));
 
@@ -27,7 +27,7 @@ describe('Record type generation', () => {
   it('generates record with enum keys', () => {
     const keyEnum = z.enum(['red', 'green', 'blue']);
     const schema = z.record(keyEnum, z.string());
-    const gen = Gen.fromSchema(schema);
+    const gen = fromSchema(schema);
 
     const tree = gen.generate(Size.of(10), Seed.fromNumber(42));
 
@@ -56,7 +56,7 @@ describe('Record type generation', () => {
     }
 
     const schema = z.record(z.nativeEnum(Color), z.number());
-    const gen = Gen.fromSchema(schema);
+    const gen = fromSchema(schema);
 
     const tree = gen.generate(Size.of(10), Seed.fromNumber(42));
 
@@ -85,7 +85,7 @@ describe('Record type generation', () => {
     }
 
     const schema = z.record(z.nativeEnum(Status), z.string());
-    const gen = Gen.fromSchema(schema);
+    const gen = fromSchema(schema);
 
     const tree = gen.generate(Size.of(10), Seed.fromNumber(42));
 
@@ -108,7 +108,7 @@ describe('Record type generation', () => {
       z.union([z.literal('name'), z.literal('email'), z.literal('phone')]),
       z.string()
     );
-    const gen = Gen.fromSchema(schema);
+    const gen = fromSchema(schema);
 
     const tree = gen.generate(Size.of(10), Seed.fromNumber(42));
 
@@ -132,7 +132,7 @@ describe('Record type generation', () => {
     ];
 
     for (const schema of testCases) {
-      const gen = Gen.fromSchema(schema);
+      const gen = fromSchema(schema);
       const tree = gen.generate(Size.of(10), Seed.fromNumber(42));
 
       const result = schema.safeParse(tree.value);
