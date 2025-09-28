@@ -184,7 +184,14 @@ export class Gen<T> {
     return new Gen(generatorFn);
   }
 
-  static string(): Gen<string> {
+  static string(...args: any[]): Gen<string> {
+    if (args.length > 0) {
+      throw new Error(
+        'Gen.string() does not accept parameters. ' +
+        'For variable-length strings, use: Gen.int(Range.uniform(min, max)).bind(len => Gen.stringOfLength(len)) ' +
+        'or the convenience method Gen.stringBetween(min, max)'
+      );
+    }
     const generatorFn = string();
     return new Gen(generatorFn);
   }
@@ -192,6 +199,14 @@ export class Gen<T> {
   static stringOfLength(length: number): Gen<string> {
     const generatorFn = stringOfLength(length);
     return new Gen(generatorFn);
+  }
+
+  static stringOfRange(range: Range<number>): Gen<string> {
+    return Gen.int(range).bind(length => Gen.stringOfLength(length));
+  }
+
+  static stringBetween(min: number, max: number): Gen<string> {
+    return Gen.stringOfRange(Range.uniform(min, max));
   }
 
   // Extended primitive generators
