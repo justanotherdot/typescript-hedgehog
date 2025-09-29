@@ -10,6 +10,14 @@ module.exports = {
   env: {
     node: true,
     es6: true,
+    browser: true,
+  },
+  globals: {
+    NodeJS: 'readonly',
+    Worker: 'readonly',
+    ErrorEvent: 'readonly',
+    navigator: 'readonly',
+    globalThis: 'readonly',
   },
   rules: {
     'prefer-const': 'error',
@@ -24,7 +32,7 @@ module.exports = {
     }],
 
     // Code quality
-    'no-console': 'warn',
+    'no-console': 'off', // Allow console statements for debugging worker infrastructure
     'no-debugger': 'error',
   },
   ignorePatterns: ['dist/', 'coverage/', 'node_modules/', '*.js', '**/*.bench.ts'],
