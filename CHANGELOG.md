@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-10-01
+
+### Changed
+- Replaced test worker implementation with web workers and worker threads for better performance
+- Simplified concurrent and parallel testing architecture
+- Removed legacy test worker code
+
+### Added
+- Web worker support for browser environments
+- Worker thread support for Node.js environments
+- Concurrent and parallel testing capabilities
+- Validation for API mishandling edge cases
+- Top-level README for better project overview
+
+### Fixed
+- Edge cases in various generators for more reliable test data generation
+- Node/DOM type definitions for improved CI compatibility
+
 ## [0.1.2] - 2025-09-28
 
 ### Breaking Changes
@@ -51,6 +69,7 @@
 - Bulk operations show significant speedups in benchmarks (see `npm run bench`)
 - WebAssembly implementation available for CPU-intensive workloads
 
+[0.2.0]: https://github.com/justanotherdot/typescript-hedgehog/releases/tag/0.2.0
 [0.1.2]: https://github.com/justanotherdot/typescript-hedgehog/releases/tag/0.1.2
 [0.1.1]: https://github.com/justanotherdot/typescript-hedgehog/releases/tag/0.1.1
 [0.1.0]: https://github.com/justanotherdot/typescript-hedgehog/releases/tag/0.1.0
