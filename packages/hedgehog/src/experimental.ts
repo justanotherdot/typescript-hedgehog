@@ -45,8 +45,8 @@ export {
   shutdownWorkerLikePool,
   defaultWorkerLikePoolConfig,
   type WorkerLikePoolConfig,
-  type WorkerLikeTestResult,
-  type ManagedWorkerLike,
+  type TestExecutionResult as WorkerLikeTestResult,
+  type WorkerLike as ManagedWorkerLike,
   type TestResult,
-  type WorkerLikeMessage,
+  type WorkerMessage as WorkerLikeMessage,
 } from './worker.js';

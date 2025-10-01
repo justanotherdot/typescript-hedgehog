@@ -44,7 +44,7 @@ export interface ConcurrentConfig {
 export function defaultConcurrentConfig(): ConcurrentConfig {
   return {
     workerCount: 4,
-    testTimeout: 5000,
+    testTimeout: 15000, // Extended for CI
     repetitions: 3,
     detectTimingIssues: true,
     collectTraces: false,

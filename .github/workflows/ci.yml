@@ -133,6 +133,9 @@ jobs:
       - name: Build WASM
         run: npm run build:wasm
 
+      - name: Build TypeScript
+        run: npm run build
+
       - name: Test
         run: npm test
 

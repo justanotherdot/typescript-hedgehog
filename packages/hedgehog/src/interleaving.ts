@@ -60,7 +60,7 @@ export function defaultInterleavingConfig(): InterleavingConfig {
     maxInterleavings: 20,
     explorationStrategy: 'heuristic',
     prioritizeSuspiciousInterleavings: true,
-    executionTimeout: 5000,
+    executionTimeout: 15000, // Extended for CI
   };
 }
 

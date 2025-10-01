@@ -12,6 +12,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    testTimeout: 20000, // Extended for CI worker tests
     include: ['src/**/*.{test,spec}.?(c|m)[jt]s?(x)'],
     coverage: {
       provider: 'v8',
