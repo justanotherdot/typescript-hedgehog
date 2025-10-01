@@ -220,7 +220,7 @@ describe('Worker Security Meta-Tests', () => {
       await testPool.shutdown();
 
       // Pool should be completely cleaned up
-      const stats = testPool.getStats();
+      const stats = testPool.getStatus();
       expect(stats.totalWorkers).toBe(0);
       expect(stats.pendingTests).toBe(0);
     });
@@ -338,7 +338,7 @@ describe('Worker Security Meta-Tests', () => {
         }
 
         // Pool should still be healthy
-        const stats = workerPool.getStats();
+        const stats = workerPool.getStatus();
         expect(stats.healthyWorkers).toBeGreaterThan(0);
       }
 

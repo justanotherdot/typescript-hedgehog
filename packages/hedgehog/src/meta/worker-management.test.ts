@@ -27,7 +27,7 @@ describe('Worker Management Meta-Tests', () => {
 
   describe('Worker Lifecycle Management', () => {
     it('should initialize workers successfully', async () => {
-      const stats = workerPool.getStats();
+      const stats = workerPool.getStatus();
       expect(stats.totalWorkers).toBe(2);
       expect(stats.healthyWorkers).toBe(2);
       expect(stats.activeTests).toBe(0);
@@ -130,7 +130,7 @@ describe('Worker Management Meta-Tests', () => {
     });
 
     it('should maintain worker pool statistics correctly', async () => {
-      const initialStats = workerPool.getStats();
+      const initialStats = workerPool.getStatus();
       expect(initialStats.activeTests).toBe(0);
 
       const result = await workerPool.executeTest(42, async (_input: number) => {
@@ -143,7 +143,7 @@ describe('Worker Management Meta-Tests', () => {
       expect(result.success).toBe(true);
 
       // After test completes, active tests should be back to 0
-      const finalStats = workerPool.getStats();
+      const finalStats = workerPool.getStatus();
       expect(finalStats.activeTests).toBe(0);
     });
   });
@@ -222,12 +222,12 @@ describe('Worker Management Meta-Tests', () => {
 
       await testPool.initialize();
 
-      const initialStats = testPool.getStats();
+      const initialStats = testPool.getStatus();
       expect(initialStats.totalWorkers).toBe(2);
 
       await testPool.shutdown();
 
-      const finalStats = testPool.getStats();
+      const finalStats = testPool.getStatus();
       expect(finalStats.totalWorkers).toBe(0);
       expect(finalStats.pendingTests).toBe(0);
     });
