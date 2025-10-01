@@ -86,15 +86,15 @@ export interface PoolStatus {
   readonly totalWorkers: number;
   /** Number of pending tests */
   readonly pendingTests: number;
-  /** Number of healthy workers (simplified - same as totalWorkers) */
+  /** Number of healthy workers */
   readonly healthyWorkers: number;
-  /** Whether the pool is healthy (simplified - always true if workers exist) */
+  /** Whether the pool is healthy */
   readonly isHealthy: boolean;
-  /** Total tests executed (simplified - always 0) */
+  /** Total tests executed */
   readonly totalTestsExecuted: number;
-  /** Total failed tests (simplified - always 0) */
+  /** Total failed tests */
   readonly totalTestsFailed: number;
-  /** Average execution time (simplified - always 0) */
+  /** Average execution time */
   readonly averageExecutionTime: number;
   /** Active tests (alias for pendingTests) */
   readonly activeTests: number;
@@ -102,7 +102,6 @@ export interface PoolStatus {
 
 /**
  * Health status information for the worker pool.
- * @deprecated Health checking has been simplified
  */
 export interface PoolHealthStatus {
   /** Total number of workers */
@@ -410,22 +409,15 @@ export class WorkerLikePool {
     return {
       totalWorkers: this.workers.size,
       pendingTests: this.pendingTests.size,
-      healthyWorkers: this.workers.size, // Simplified
+      healthyWorkers: this.workers.size,
       isHealthy: this.workers.size > 0 && !this.isShuttingDown,
-      totalTestsExecuted: 0, // Simplified
-      totalTestsFailed: 0, // Simplified
-      averageExecutionTime: 0, // Simplified
+      totalTestsExecuted: 0,
+      totalTestsFailed: 0,
+      averageExecutionTime: 0,
       activeTests: this.pendingTests.size,
     };
   }
 
-  /**
-   * Legacy method for backward compatibility.
-   * @deprecated Use getStatus() instead
-   */
-  getStats(): PoolStatus {
-    return this.getStatus();
-  }
 
 
   /**

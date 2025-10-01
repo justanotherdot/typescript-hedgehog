@@ -1,5 +1,5 @@
 /**
- * Simplified concurrent testing for basic race condition detection.
+ * Concurrent testing for race condition detection.
  */
 
 import { Gen } from './gen.js';
@@ -8,7 +8,7 @@ import { Seed } from './data/seed.js';
 import { Size } from './data/size.js';
 
 /**
- * Simplified result type for concurrent testing.
+ * Result type for concurrent testing.
  */
 export interface ConcurrentTestResult {
   readonly type: 'pass' | 'fail';
