@@ -27,14 +27,11 @@ export {
 // Re-export concurrent testing APIs
 export {
   forAllConcurrent,
-  concurrentProperty,
   detectRaceConditions,
   defaultConcurrentConfig,
   type ConcurrentConfig,
   type ConcurrentTestResult,
   type ConcurrentPropertyResult,
-  type RaceConditionPattern,
-  type ConcurrentPerformanceAnalysis,
   ConcurrentProperty,
 } from './concurrent.js';
 

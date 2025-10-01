@@ -15,11 +15,11 @@ export interface WorkerLikePoolConfig {
   /** Timeout for individual test execution in milliseconds */
   readonly testTimeout: number;
 
-  /** Timeout for health checks in milliseconds */
-  readonly healthCheckTimeout: number;
-
   /** Maximum number of pending tests before rejecting new ones */
   readonly maxPendingTests: number;
+
+  /** Timeout for health checks in milliseconds */
+  readonly healthCheckTimeout: number;
 
   /** Enable debug logging */
   readonly enableLogging: boolean;
@@ -32,8 +32,8 @@ export function defaultWorkerLikePoolConfig(): WorkerLikePoolConfig {
   return {
     maxWorkers: Math.max(1, Math.floor((globalThis.navigator?.hardwareConcurrency || 4) / 2)),
     testTimeout: 30000, // 30 seconds
-    healthCheckTimeout: 15000, // 15 seconds for CI compatibility
     maxPendingTests: 100,
+    healthCheckTimeout: 5000, // 5 seconds
     enableLogging: false,
   };
 }
@@ -79,7 +79,30 @@ export interface TestExecutionResult<TResult> {
 }
 
 /**
- * Health information for the worker pool.
+ * Basic information about the worker pool.
+ */
+export interface PoolStatus {
+  /** Total number of workers */
+  readonly totalWorkers: number;
+  /** Number of pending tests */
+  readonly pendingTests: number;
+  /** Number of healthy workers (simplified - same as totalWorkers) */
+  readonly healthyWorkers: number;
+  /** Whether the pool is healthy (simplified - always true if workers exist) */
+  readonly isHealthy: boolean;
+  /** Total tests executed (simplified - always 0) */
+  readonly totalTestsExecuted: number;
+  /** Total failed tests (simplified - always 0) */
+  readonly totalTestsFailed: number;
+  /** Average execution time (simplified - always 0) */
+  readonly averageExecutionTime: number;
+  /** Active tests (alias for pendingTests) */
+  readonly activeTests: number;
+}
+
+/**
+ * Health status information for the worker pool.
+ * @deprecated Health checking has been simplified
  */
 export interface PoolHealthStatus {
   /** Total number of workers */
@@ -88,22 +111,8 @@ export interface PoolHealthStatus {
   readonly healthyWorkers: number;
   /** Number of pending tests */
   readonly pendingTests: number;
-  /** Whether the pool is in a healthy state */
+  /** Whether the pool is healthy */
   readonly isHealthy: boolean;
-}
-
-/**
- * Statistics about the worker pool operation.
- */
-export interface PoolStats extends PoolHealthStatus {
-  /** Total tests executed since pool creation */
-  readonly totalTestsExecuted: number;
-  /** Total failed tests since pool creation */
-  readonly totalTestsFailed: number;
-  /** Average test execution time in milliseconds */
-  readonly averageExecutionTime: number;
-  /** Number of currently active (executing) tests (alias for pendingTests) */
-  readonly activeTests: number;
 }
 
 // Worker detection and creation
@@ -139,9 +148,7 @@ export class WorkerLikePool {
   private readonly pendingTests = new Map<string, Promise<any>>();
   private isInitialized = false;
   private isShuttingDown = false;
-  private totalTestsExecuted = 0;
-  private totalTestsFailed = 0;
-  private totalExecutionTime = 0;
+  // Removed health tracking variables
   private roundRobinCounter = 0;
 
   constructor(config: Partial<WorkerLikePoolConfig> = {}) {
@@ -242,11 +249,7 @@ export class WorkerLikePool {
 
     try {
       const result = await testPromise;
-      this.recordTestCompletion(result);
       return result;
-    } catch (error) {
-      this.recordTestFailure();
-      throw error;
     } finally {
       this.pendingTests.delete(testId);
     }
@@ -295,25 +298,7 @@ export class WorkerLikePool {
     return selectedWorker;
   }
 
-  /**
-   * Record successful test completion for statistics.
-   */
-  private recordTestCompletion<TResult>(result: TestExecutionResult<TResult>): void {
-    this.totalTestsExecuted++;
-    this.totalExecutionTime += result.timing;
-
-    if (!result.success) {
-      this.totalTestsFailed++;
-    }
-  }
-
-  /**
-   * Record test failure for statistics.
-   */
-  private recordTestFailure(): void {
-    this.totalTestsExecuted++;
-    this.totalTestsFailed++;
-  }
+  // Removed health tracking methods
 
   /**
    * Perform health check on all workers.
@@ -421,23 +406,27 @@ export class WorkerLikePool {
   /**
    * Get current pool statistics.
    */
-  getStats(): PoolStats {
-    const healthyWorkers = Array.from(this.workers.values())
-      .filter(worker => !worker.isTerminated()).length;
-
+  getStatus(): PoolStatus {
     return {
       totalWorkers: this.workers.size,
-      healthyWorkers,
       pendingTests: this.pendingTests.size,
-      activeTests: this.pendingTests.size, // alias for pendingTests
-      isHealthy: healthyWorkers > 0 && !this.isShuttingDown,
-      totalTestsExecuted: this.totalTestsExecuted,
-      totalTestsFailed: this.totalTestsFailed,
-      averageExecutionTime: this.totalTestsExecuted > 0
-        ? this.totalExecutionTime / this.totalTestsExecuted
-        : 0,
+      healthyWorkers: this.workers.size, // Simplified
+      isHealthy: this.workers.size > 0 && !this.isShuttingDown,
+      totalTestsExecuted: 0, // Simplified
+      totalTestsFailed: 0, // Simplified
+      averageExecutionTime: 0, // Simplified
+      activeTests: this.pendingTests.size,
     };
   }
+
+  /**
+   * Legacy method for backward compatibility.
+   * @deprecated Use getStatus() instead
+   */
+  getStats(): PoolStatus {
+    return this.getStatus();
+  }
+
 
   /**
    * Shutdown the worker pool and clean up all resources.
