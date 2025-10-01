@@ -442,3 +442,471 @@ export function command<State, Input, Output>(
     callbacks,
   };
 }
+
+// Parallel state machine testing
+export function parallel<State>(
+  prefixRange: { min: number; max: number },
+  branchRange: { min: number; max: number },
+  initialState: State,
+  commands: Command<State, unknown, unknown>[]
+): Gen<Parallel<State>> {
+  return Gen.sized((size) => {
+    const maxPrefixLength = Math.min(prefixRange.max, size.value);
+    const minPrefixLength = Math.min(prefixRange.min, maxPrefixLength);
+    const prefixLengthGen = Gen.int(Range.uniform(minPrefixLength, maxPrefixLength));
+
+    const maxBranchLength = Math.min(branchRange.max, size.value);
+    const minBranchLength = Math.min(branchRange.min, maxBranchLength);
+    const branchLengthGen = Gen.int(Range.uniform(minBranchLength, maxBranchLength));
+
+    return prefixLengthGen.bind((prefixLength) =>
+      branchLengthGen.bind((branchLength) =>
+        generateParallelSequence(prefixLength, branchLength, initialState, commands)
+      )
+    );
+  });
+}
+
+function generateParallelSequence<State>(
+  prefixLength: number,
+  branchLength: number,
+  initialState: State,
+  commands: Command<State, unknown, unknown>[]
+): Gen<Parallel<State>> {
+  return Gen.create((size, seed) => {
+    // Generate prefix actions
+    const prefixActions: Action<State, unknown, unknown>[] = [];
+    let currentState = initialState;
+    let currentSeed = seed;
+
+    for (let i = 0; i < prefixLength; i++) {
+      const availableCommands = commands.filter(
+        (cmd) => cmd.generator(currentState) !== null
+      );
+
+      if (availableCommands.length === 0) {
+        break;
+      }
+
+      const [commandIndex, seed1] = currentSeed.nextBounded(availableCommands.length);
+      const command = availableCommands[commandIndex];
+      const inputGen = command.generator(currentState);
+
+      if (!inputGen) {
+        continue;
+      }
+
+      const [, seed2] = seed1.split();
+      const inputTree = inputGen.generate(size, seed2);
+      const input = inputTree.value;
+
+      const output = new Symbolic<unknown>('unknown');
+      const action: Action<State, unknown, unknown> = {
+        input,
+        output,
+        command,
+      };
+
+      prefixActions.push(action);
+
+      // Apply update callbacks
+      for (const callback of command.callbacks) {
+        if (callback.type === 'update') {
+          currentState = callback.update(currentState, input, output);
+        }
+      }
+
+      const [, seed3] = seed2.split();
+      currentSeed = seed3;
+    }
+
+    // Generate branch actions starting from the state after prefix
+    const [branch1Seed, branch2Seed] = currentSeed.split();
+    const branch1Actions = generateBranchActions(branchLength, currentState, commands, size, branch1Seed);
+    const branch2Actions = generateBranchActions(branchLength, currentState, commands, size, branch2Seed);
+
+    const result: Parallel<State> = {
+      type: 'parallel',
+      prefix: prefixActions,
+      branches: [branch1Actions, branch2Actions],
+      initialState,
+    };
+
+    return Tree.singleton(result);
+  });
+}
+
+function generateBranchActions<State>(
+  length: number,
+  initialState: State,
+  commands: Command<State, unknown, unknown>[],
+  size: Size,
+  seed: Seed
+): Action<State, unknown, unknown>[] {
+  const actions: Action<State, unknown, unknown>[] = [];
+  let currentState = initialState;
+  let currentSeed = seed;
+
+  for (let i = 0; i < length; i++) {
+    const availableCommands = commands.filter(
+      (cmd) => cmd.generator(currentState) !== null
+    );
+
+    if (availableCommands.length === 0) {
+      break;
+    }
+
+    const [commandIndex, seed1] = currentSeed.nextBounded(availableCommands.length);
+    const command = availableCommands[commandIndex];
+    const inputGen = command.generator(currentState);
+
+    if (!inputGen) {
+      continue;
+    }
+
+    const [, seed2] = seed1.split();
+    const inputTree = inputGen.generate(size, seed2);
+    const input = inputTree.value;
+
+    const output = new Symbolic<unknown>('unknown');
+    const action: Action<State, unknown, unknown> = {
+      input,
+      output,
+      command,
+    };
+
+    actions.push(action);
+
+    // Apply update callbacks
+    for (const callback of command.callbacks) {
+      if (callback.type === 'update') {
+        currentState = callback.update(currentState, input, output);
+      }
+    }
+
+    const [, seed3] = seed2.split();
+    currentSeed = seed3;
+  }
+
+  return actions;
+}
+
+// Interleaving algorithm (like Haskell's)
+function interleave<T>(xs: T[], ys: T[]): T[][] {
+  if (xs.length === 0 && ys.length === 0) {
+    return [[]];
+  }
+  if (xs.length === 0) {
+    return [ys];
+  }
+  if (ys.length === 0) {
+    return [xs];
+  }
+
+  const [x, ...xsRest] = xs;
+  const [y, ...ysRest] = ys;
+
+  const result: T[][] = [];
+
+  // x goes first
+  for (const interleaving of interleave(xsRest, ys)) {
+    result.push([x, ...interleaving]);
+  }
+
+  // y goes first
+  for (const interleaving of interleave(xs, ysRest)) {
+    result.push([y, ...interleaving]);
+  }
+
+  return result;
+}
+
+// Execute actions and check postconditions
+interface ActionExecution<State> {
+  readonly action: Action<State, unknown, unknown>;
+  readonly result: unknown;
+  readonly success: boolean;
+  readonly error?: string;
+}
+
+
+// Linearization check
+async function linearize<State>(
+  initialState: State,
+  branch1Executions: ActionExecution<State>[],
+  branch2Executions: ActionExecution<State>[]
+): Promise<{ success: boolean; error?: string }> {
+  // Extract actions from executions
+  const branch1Actions = branch1Executions.map(exec => exec.action);
+  const branch2Actions = branch2Executions.map(exec => exec.action);
+
+  // Create a mapping of action outputs to their actual results
+  const resultMapping = new Map<Symbolic<unknown>, unknown>();
+  for (const exec of branch1Executions) {
+    if (exec.success) {
+      resultMapping.set(exec.action.output, exec.result);
+    }
+  }
+  for (const exec of branch2Executions) {
+    if (exec.success) {
+      resultMapping.set(exec.action.output, exec.result);
+    }
+  }
+
+  // Generate all possible interleavings
+  const interleavings = interleave(branch1Actions, branch2Actions);
+
+  // Try each interleaving to see if any satisfies all conditions
+  for (const interleaving of interleavings) {
+    const environment = new Environment();
+    let currentState = initialState;
+    let interleavingValid = true;
+
+    // Execute each action in the interleaving
+    for (const action of interleaving) {
+      try {
+        // Resolve input
+        const resolvedInput = resolveInput(action.input, environment);
+        const resolvedState = resolveState(currentState, environment);
+
+        // Check preconditions
+        for (const callback of action.command.callbacks) {
+          if (callback.type === 'require') {
+            if (!callback.check(resolvedState, resolvedInput)) {
+              interleavingValid = false;
+              break;
+            }
+          }
+        }
+
+        if (!interleavingValid) break;
+
+        // Use the actual result from parallel execution
+        const actualResult = resultMapping.get(action.output);
+        if (actualResult === undefined) {
+          interleavingValid = false;
+          break;
+        }
+
+        environment.bind(action.output, actualResult);
+
+        const stateBefore = currentState;
+
+        // Apply updates
+        for (const callback of action.command.callbacks) {
+          if (callback.type === 'update') {
+            currentState = callback.update(currentState, action.input, action.output);
+          }
+        }
+
+        // Check postconditions
+        const resolvedStateBefore = resolveState(stateBefore, environment);
+        const resolvedStateAfter = resolveState(currentState, environment);
+
+        for (const callback of action.command.callbacks) {
+          if (callback.type === 'ensure') {
+            if (!callback.check(resolvedStateBefore, resolvedStateAfter, resolvedInput, actualResult)) {
+              interleavingValid = false;
+              break;
+            }
+          }
+        }
+
+        if (!interleavingValid) break;
+
+      } catch (_error) {
+        interleavingValid = false;
+        break;
+      }
+    }
+
+    if (interleavingValid) {
+      return { success: true };
+    }
+  }
+
+  return {
+    success: false,
+    error: 'No valid interleaving found - linearization failed'
+  };
+}
+
+// Execute parallel state machine testing
+export async function executeParallel<State>(
+  parallel: Parallel<State>
+): Promise<{ success: boolean; failureDetails?: string }> {
+  const environment = new Environment();
+  let currentState = parallel.initialState;
+
+  // Execute prefix sequentially
+  for (let i = 0; i < parallel.prefix.length; i++) {
+    const action = parallel.prefix[i];
+
+    try {
+      const resolvedInput = resolveInput(action.input, environment);
+      const resolvedState = resolveState(currentState, environment);
+
+      // Check preconditions
+      for (const callback of action.command.callbacks) {
+        if (callback.type === 'require') {
+          if (!callback.check(resolvedState, resolvedInput)) {
+            return {
+              success: false,
+              failureDetails: `Prefix precondition failed at action ${i}`,
+            };
+          }
+        }
+      }
+
+      // Execute command
+      const result = await action.command.executor(resolvedInput);
+      environment.bind(action.output, result);
+
+      const stateBefore = currentState;
+
+      // Apply updates
+      for (const callback of action.command.callbacks) {
+        if (callback.type === 'update') {
+          currentState = callback.update(currentState, action.input, action.output);
+        }
+      }
+
+      // Check postconditions
+      const resolvedStateBefore = resolveState(stateBefore, environment);
+      const resolvedStateAfter = resolveState(currentState, environment);
+
+      for (const callback of action.command.callbacks) {
+        if (callback.type === 'ensure') {
+          if (!callback.check(resolvedStateBefore, resolvedStateAfter, resolvedInput, result)) {
+            return {
+              success: false,
+              failureDetails: `Prefix postcondition failed at action ${i}`,
+            };
+          }
+        }
+      }
+    } catch (error) {
+      return {
+        success: false,
+        failureDetails: `Prefix action ${i} threw error: ${error}`,
+      };
+    }
+  }
+
+  // Execute branches in parallel
+  const [branch1, branch2] = parallel.branches;
+
+  const executeBranch = async (
+    branch: Action<State, unknown, unknown>[]
+  ): Promise<ActionExecution<State>[]> => {
+    const branchEnvironment = environment.clone();
+    const executions: ActionExecution<State>[] = [];
+
+    for (const action of branch) {
+      try {
+        const resolvedInput = resolveInput(action.input, branchEnvironment);
+        const result = await action.command.executor(resolvedInput);
+        branchEnvironment.bind(action.output, result);
+
+        executions.push({
+          action,
+          result,
+          success: true,
+        });
+      } catch (error) {
+        executions.push({
+          action,
+          result: undefined,
+          success: false,
+          error: String(error),
+        });
+        break; // Stop on first error in branch
+      }
+    }
+
+    return executions;
+  };
+
+  // Execute both branches concurrently
+  const [branch1Executions, branch2Executions] = await Promise.all([
+    executeBranch(branch1),
+    executeBranch(branch2),
+  ]);
+
+  // Check if any branch failed
+  const branch1Failed = branch1Executions.some(exec => !exec.success);
+  const branch2Failed = branch2Executions.some(exec => !exec.success);
+
+  if (branch1Failed || branch2Failed) {
+    const failedBranch = branch1Failed ? 'branch1' : 'branch2';
+    const failedExecution = branch1Failed ?
+      branch1Executions.find(exec => !exec.success) :
+      branch2Executions.find(exec => !exec.success);
+
+    return {
+      success: false,
+      failureDetails: `${failedBranch} failed: ${failedExecution?.error || 'unknown error'}`,
+    };
+  }
+
+  // Perform linearization check
+  const linearizationResult = await linearize(currentState, branch1Executions, branch2Executions);
+
+  if (!linearizationResult.success) {
+    return {
+      success: false,
+      failureDetails: linearizationResult.error || 'Linearization failed',
+    };
+  }
+
+  return { success: true };
+}
+
+// Property-based test creation for parallel state machine testing
+export class ParallelStateMachineProperty<State> {
+  constructor(private readonly parallelGen: Gen<Parallel<State>>) {}
+
+  async check(config?: { testLimit?: number; seed?: number }): Promise<{
+    ok: boolean;
+    counterexample?: Parallel<State>;
+    error?: string;
+  }> {
+    const testLimit = config?.testLimit ?? 100;
+    const seed = config?.seed ?? Math.floor(Math.random() * 2 ** 32);
+    let currentSeed = Seed.fromNumber(seed);
+
+    for (let i = 0; i < testLimit; i++) {
+      const size = Size.of(Math.min(i, 100));
+      const tree = this.parallelGen.generate(size, currentSeed);
+      const parallelSequence = tree.value;
+
+      try {
+        const result = await executeParallel(parallelSequence);
+        if (!result.success) {
+          return {
+            ok: false,
+            counterexample: parallelSequence,
+            error: result.failureDetails ?? 'Unknown failure',
+          };
+        }
+      } catch (error) {
+        return {
+          ok: false,
+          counterexample: parallelSequence,
+          error: `Execution error: ${error}`,
+        };
+      }
+
+      const [, newSeed] = currentSeed.split();
+      currentSeed = newSeed;
+    }
+
+    return { ok: true };
+  }
+}
+
+export function forAllParallel<State>(
+  parallelGen: Gen<Parallel<State>>
+): ParallelStateMachineProperty<State> {
+  return new ParallelStateMachineProperty(parallelGen);
+}
