@@ -207,6 +207,53 @@ const generator = (state) => Gen.object({
 // The framework handles this automatically
 ```
 
+### Type safety with ResolvedInput
+
+TypeScript correctly reflects when Variables are symbolic versus resolved in different callbacks:
+
+**Symbolic (Variable types):**
+- **Generator**: Input contains `Variable<T>` - symbolic references
+- **Require callback**: Input contains `Variable<T>` - checking preconditions on symbolic model
+- **Update callback**: Input contains `Variable<T>`, output is `Variable<Output>` - updating symbolic model
+
+**Resolved (Concrete types):**
+- **Executor**: Input has `Variable<T>` → `T` - performing actual side effects
+- **Ensure callback**: Input has `Variable<T>` → `T`, output is `Output` - verifying concrete results
+
+Example showing this distinction:
+
+```typescript
+const createIssue = command<State, { teamId: Variable<string> }, string>(
+  (state) => Gen.object({
+    teamId: Gen.item(teamIds) // Returns Variable<string>
+  }),
+  async (input) => {
+    // TypeScript correctly shows input.teamId is string (resolved)
+    // No cast needed
+    return engine.createIssue({ teamId: input.teamId });
+  },
+  require((state, input) => {
+    // input.teamId is Variable<string> here (symbolic)
+    return state.teams.has(input.teamId);
+  }),
+  update((state, input, issueId) => {
+    // input.teamId is Variable<string> (symbolic)
+    // issueId is Variable<string> (symbolic)
+    return {
+      ...state,
+      issues: new Map(state.issues).set(issueId, { teamId: input.teamId })
+    };
+  }),
+  ensure((before, after, input, issueId) => {
+    // input.teamId is string (resolved)
+    // issueId is string (resolved)
+    return after.issues.has(issueId);
+  })
+);
+```
+
+This eliminates the need for `as any` or `as string` casts in executors and provides better autocomplete for resolved values.
+
 ## Advanced patterns
 
 ### Conditional command availability

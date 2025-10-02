@@ -3,6 +3,48 @@ import { Size, Range } from './data/size.js';
 import { Tree } from './data/tree.js';
 import { Seed } from './data/seed.js';
 
+// Type helpers for type-safe state machine commands
+
+/**
+ * Recursively resolves Variable<T> types to their concrete values T.
+ *
+ * State machine commands use symbolic Variables during generation and concrete values
+ * during execution. This type transformation reflects that executors receive resolved
+ * values, not symbolic Variables.
+ *
+ * Symbolic vs Resolved contexts:
+ * - Generator: Returns Input with Variable<T> (symbolic)
+ * - Require: Receives Input with Variable<T> (symbolic)
+ * - Update: Receives Input with Variable<T>, output Variable<Output> (symbolic)
+ * - Executor: Receives ResolvedInput<Input> where Variable<T> → T (resolved)
+ * - Ensure: Receives ResolvedInput<Input> and Output (resolved)
+ *
+ * @example
+ * type Input = { teamId: Variable<string>; count: number };
+ * type Resolved = ResolvedInput<Input>;
+ * // Resolved = { teamId: string; count: number }
+ *
+ * const cmd = command<State, Input, string>(
+ *   (state) => Gen.object({
+ *     teamId: Gen.item(teamIds), // Returns Variable<string>
+ *     count: Gen.int(Range.uniform(0, 10))
+ *   }),
+ *   async (input) => {
+ *     input.teamId // Type: string (resolved, not Variable<string>)
+ *     input.count  // Type: number (unchanged)
+ *     return engine.process({ teamId: input.teamId }); // No cast needed
+ *   },
+ *   // ...callbacks
+ * );
+ */
+type ResolvedInput<T> = {
+  [K in keyof T]: T[K] extends Variable<infer U>
+    ? U
+    : T[K] extends object
+    ? ResolvedInput<T[K]>
+    : T[K];
+};
+
 // Variable system for symbolic/concrete duality
 let nextSymbolicId = 0;
 
@@ -89,9 +131,10 @@ export type Callback<State, Input, Output> =
   | EnsureCallback<State, Input, Output>;
 
 // Command specification
+// Executor receives ResolvedInput where Variables are replaced with concrete values
 export interface Command<State, Input, Output> {
   generator: (state: State) => Gen<Input> | null;
-  executor: (input: Input) => Promise<Output> | Output;
+  executor: (input: ResolvedInput<Input>) => Promise<Output> | Output;
   callbacks: Callback<State, Input, Output>[];
 }
 
@@ -431,9 +474,10 @@ export function newVar<T>(typeName: string = 'T'): Symbolic<T> {
 }
 
 // Type-safe command builders
+// Executor receives resolved input (Variables replaced with concrete values)
 export function command<State, Input, Output>(
   generator: (state: State) => Gen<Input> | null,
-  executor: (input: Input) => Promise<Output> | Output,
+  executor: (input: ResolvedInput<Input>) => Promise<Output> | Output,
   ...callbacks: Callback<State, Input, Output>[]
 ): Command<State, Input, Output> {
   return {

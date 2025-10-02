@@ -255,6 +255,122 @@ describe('Advanced State Machine Testing', () => {
     });
   });
 
+  describe('Variable Resolution Types', () => {
+    it('executor receives resolved Variable values, not Variables', async () => {
+      interface State {
+        values: Map<Variable<string>, number>;
+      }
+
+      // Generator creates input with Variable<string>
+      const cmd = command<State, { id: Variable<string> }, number>(
+        (state) => {
+          const ids = Array.from(state.values.keys());
+          if (ids.length === 0) return null;
+          return Gen.object({ id: Gen.item(ids) });
+        },
+        // KEY IMPROVEMENT: TypeScript shows input.id is string, not Variable<string>
+        // This prevents the `as any` cast that was needed before
+        async (input) => {
+          // input.id is typed as string (resolved), not Variable<string>
+          const idLength: number = input.id.length; // Works!
+
+          // Before this improvement, users would see:
+          // input.id: Variable<string>
+          // And would need: (input.id as any).length or (input.id as string).length
+
+          return idLength;
+        },
+        require((state, input) => state.values.has(input.id)),
+        update((state, _input, _output) => state),
+        ensure((_before, _after, _input, output) => output > 0)
+      );
+
+      expect(cmd).toBeDefined();
+    });
+
+    it('complex nested Variables are also resolved', () => {
+      interface State {
+        items: Variable<string>[];
+      }
+
+      const cmd = command<
+        State,
+        {
+          item: Variable<string>;
+          metadata: {
+            ref: Variable<number>;
+            data: string;
+          };
+        },
+        void
+      >(
+        () => Gen.object({
+          item: Gen.constant(newVar('item')),
+          metadata: Gen.object({
+            ref: Gen.constant(newVar('ref')),
+            data: Gen.constant('test')
+          })
+        }),
+        // Executor receives fully resolved input:
+        // item: string (not Variable<string>)
+        // metadata.ref: number (not Variable<number>)
+        // metadata.data: string (unchanged)
+        async (input) => {
+          const _itemLen: number = input.item.length; // string
+          const _refValue: number = input.metadata.ref; // number
+          const _dataLen: number = input.metadata.data.length; // string
+        },
+        require(() => true),
+        update((state) => state),
+        ensure(() => true)
+      );
+
+      expect(cmd).toBeDefined();
+    });
+
+    it('shows correct types in callbacks', () => {
+      interface State {
+        count: number;
+        items: Map<Variable<string>, { value: number }>;
+      }
+
+      const cmd = command<State, { target: Variable<string>; amount: number }, void>(
+        (state) => {
+          const targets = Array.from(state.items.keys());
+          return Gen.object({
+            target: Gen.item(targets),
+            amount: Gen.int(Range.uniform(1, 10))
+          });
+        },
+        async (input) => {
+          // input.target is string (resolved)
+          // input.amount is number (unchanged)
+          const _len: number = input.target.length;
+          const _doubled: number = input.amount * 2;
+        },
+        require((state, input) => {
+          // input.target is Variable<string> here (symbolic)
+          return state.items.has(input.target);
+        }),
+        update((state, input, _output) => {
+          // input.target is Variable<string> here (symbolic)
+          // output is Variable<void> (symbolic)
+          return {
+            ...state,
+            count: state.count + input.amount
+          };
+        }),
+        ensure((before, after, input, _output) => {
+          // input.target is string here (resolved)
+          // output is void here (resolved)
+          return after.count === before.count + input.amount;
+        })
+      );
+
+      expect(cmd).toBeDefined();
+    });
+  });
+
   describe('State Machine Property Testing Variations', () => {
     it('should support different test configurations', async () => {
       const property = forAllSequential(
