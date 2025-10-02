@@ -61,26 +61,64 @@ export class Symbolic<_T> {
   toString(): string {
     return `Var${this.id}`;
   }
+
+  equals(other: Symbolic<_T>): boolean {
+    return this.id === other.id;
+  }
 }
 
 export class Concrete<T> {
   readonly type = 'concrete' as const;
 
   constructor(readonly value: T) {}
+
+  // Structural equality - compares wrapped values
+  equals(other: Concrete<T>): boolean {
+    if (this === other) return true;
+
+    // Deep equality for objects/arrays
+    if (typeof this.value === 'object' && typeof other.value === 'object') {
+      return JSON.stringify(this.value) === JSON.stringify(other.value);
+    }
+
+    return this.value === other.value;
+  }
 }
 
 export type Variable<T> = Symbolic<T> | Concrete<T>;
 
-// Environment maps symbolic variables to concrete values
+// Environment maps symbolic variables to concrete wrappers
 export class Environment {
-  private readonly bindings = new Map<number, unknown>();
+  private readonly bindings = new Map<number, Concrete<unknown>>();
+  private readonly concreteCache: Map<any, Concrete<any>>;
 
-  bind<T>(symbolic: Symbolic<T>, value: T): void {
-    this.bindings.set(symbolic.id, value);
+  constructor(sharedCache?: Map<any, Concrete<any>>) {
+    this.concreteCache = sharedCache ?? new Map();
   }
 
-  lookup<T>(symbolic: Symbolic<T>): T | undefined {
-    return this.bindings.get(symbolic.id) as T | undefined;
+  bind<T>(symbolic: Symbolic<T>, concrete: Concrete<T>): void {
+    this.bindings.set(symbolic.id, concrete);
+  }
+
+  lookup<T>(symbolic: Symbolic<T>): Concrete<T> | undefined {
+    return this.bindings.get(symbolic.id) as Concrete<T> | undefined;
+  }
+
+  // Interning: same value → same Concrete instance
+  // Enables value-based equality via reference equality for Map keys
+  // Critical for Map<Variable, Data> to match SUT behavior with duplicate values
+  createConcrete<T>(value: T): Concrete<T> {
+    const cacheKey = typeof value === 'object' && value !== null
+      ? JSON.stringify(value)
+      : value;
+
+    if (this.concreteCache.has(cacheKey)) {
+      return this.concreteCache.get(cacheKey)!;
+    }
+
+    const concrete = new Concrete(value);
+    this.concreteCache.set(cacheKey, concrete);
+    return concrete;
   }
 
   has(symbolic: Symbolic<unknown>): boolean {
@@ -91,17 +129,29 @@ export class Environment {
     if (variable.type === 'concrete') {
       return variable.value;
     }
-    return this.lookup(variable);
+    const concrete = this.lookup(variable);
+    return concrete?.value;
   }
 
+  // Clone with shared interning cache
+  // Each branch needs independent bindings (different Symbolic → Concrete mappings)
+  // But shared cache ensures duplicate values return same Concrete across branches
   clone(): Environment {
-    const env = new Environment();
+    const env = new Environment(this.concreteCache); // Share the cache
     env.bindings.clear();
     for (const [id, value] of this.bindings) {
       env.bindings.set(id, value);
     }
     return env;
   }
+}
+
+// Helper to check if a value is a Variable
+function isVariable(value: any): value is Variable<any> {
+  return value != null &&
+         typeof value === 'object' &&
+         ('type' in value) &&
+         (value.type === 'symbolic' || value.type === 'concrete');
 }
 
 // Callback types for command specification
@@ -268,7 +318,10 @@ function generateSequence<State>(
   });
 }
 
-// Helper function to resolve symbolic variables in inputs
+// Fully unwrap Variables to plain values
+// Used by: executors (don't know about Variables), ensure (compares plain values)
+// Symbolic → lookup → unwrap to value
+// Concrete → unwrap to value
 function resolveInput(input: any, environment: Environment): any {
   if (input && typeof input === 'object') {
     if (input.type === 'symbolic') {
@@ -276,7 +329,7 @@ function resolveInput(input: any, environment: Environment): any {
       if (resolved === undefined) {
         throw new Error(`Unresolved symbolic variable: ${input.toString()}`);
       }
-      return resolved;
+      return resolved.value; // Unwrap the Concrete wrapper
     }
 
     if (input.type === 'concrete') {
@@ -298,7 +351,67 @@ function resolveInput(input: any, environment: Environment): any {
   return input;
 }
 
-// Helper function to resolve symbolic variables in state
+// Replace Symbolic with Concrete wrappers, preserving Variable structure
+// Used by: require (needs Variables for checking but not plain Symbolic)
+// Symbolic → lookup → Concrete wrapper (keeps as Variable for Map keys)
+// Concrete → unchanged
+function concretizeInput<I>(input: I, environment: Environment): I {
+  function concretize(value: any): any {
+    if (isVariable(value)) {
+      if (value.type === 'symbolic') {
+        const concrete = environment.lookup(value);
+        if (concrete === undefined) {
+          throw new Error(`Unresolved symbolic variable: ${value.toString()}`);
+        }
+        return concrete;
+      }
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      return value.map(concretize);
+    }
+
+    if (value !== null && typeof value === 'object') {
+      const result: any = {};
+      for (const [key, val] of Object.entries(value)) {
+        result[key] = concretize(val);
+      }
+      return result;
+    }
+
+    return value;
+  }
+
+  return concretize(input);
+}
+
+// Helper to serialize state for error messages (handles Maps properly)
+function serializeForErrorMessage(obj: any, _indent = 0): string {
+  if (obj === null || obj === undefined) return String(obj);
+  if (typeof obj !== 'object') return JSON.stringify(obj);
+
+  if (obj instanceof Map) {
+    const entries = Array.from(obj.entries())
+      .map(([k, v]) => `${JSON.stringify(k)}: ${serializeForErrorMessage(v)}`)
+      .join(', ');
+    return `Map(${obj.size}) {${entries}}`;
+  }
+
+  if (Array.isArray(obj)) {
+    return `[${obj.map(v => serializeForErrorMessage(v)).join(', ')}]`;
+  }
+
+  const props = Object.entries(obj)
+    .map(([k, v]) => `${k}: ${serializeForErrorMessage(v)}`)
+    .join(', ');
+  return `{${props}}`;
+}
+
+// Recursively resolve Variables in state to plain values
+// Used by: ensure callbacks (need plain values for comparison)
+// Handles Maps specially: resolves both keys and values
+// Invariant: Map<Variable<K>, V> → Map<K, V> (same semantics as SUT)
 function resolveState(state: any, environment: Environment): any {
   if (state && typeof state === 'object') {
     if (state instanceof Map) {
@@ -306,6 +419,17 @@ function resolveState(state: any, environment: Environment): any {
       for (const [key, value] of state.entries()) {
         const resolvedKey = resolveInput(key, environment);
         const resolvedValue = resolveInput(value, environment);
+
+        // Warn if we're about to overwrite a key (collision detection)
+        if (resolved.has(resolvedKey)) {
+          console.warn(
+            `WARNING: Map key collision detected!\n` +
+            `  Symbolic key ${key} resolves to ${JSON.stringify(resolvedKey)}\n` +
+            `  This will overwrite existing entry with same key.\n` +
+            `  This usually means your executor is returning duplicate IDs.`
+          );
+        }
+
         resolved.set(resolvedKey, resolvedValue);
       }
       return resolved;
@@ -325,7 +449,10 @@ function resolveState(state: any, environment: Environment): any {
   return state;
 }
 
-// Execution engine
+// Execute actions sequentially against real system
+// Flow: require → executor → update → ensure
+// Key invariant: update receives Symbolic variables (for Map keys),
+//                ensure receives unwrapped values (for comparison)
 export async function executeSequential<State>(
   sequence: Sequential<State>
 ): Promise<{ success: boolean; failureDetails?: string }> {
@@ -336,31 +463,35 @@ export async function executeSequential<State>(
     const action = sequence.actions[i];
 
     try {
-      // Resolve symbolic variables in the input
+      const concretizedInput = concretizeInput(action.input, environment);
       const resolvedInput = resolveInput(action.input, environment);
 
-      // Resolve symbolic variables in the current state for precondition checking
-      const resolvedState = resolveState(currentState, environment);
-
-      // Check require callbacks with resolved values
+      // Check preconditions
       for (const callback of action.command.callbacks) {
         if (callback.type === 'require') {
-          if (!callback.check(resolvedState, resolvedInput)) {
+          if (!callback.check(currentState, concretizedInput)) {
+            const resolvedState = resolveState(currentState, environment);
             return {
               success: false,
-              failureDetails: `Precondition failed at action ${i}`,
+              failureDetails: `Precondition failed at action ${i}
+Input: ${serializeForErrorMessage(resolvedInput)}
+State: ${serializeForErrorMessage(resolvedState)}
+(Executor was not called - precondition prevents side effects)`,
             };
           }
         }
       }
 
-      // Execute the command with resolved input
       const result = await action.command.executor(resolvedInput);
-      environment.bind(action.output, result);
+
+      // Intern result: same value → same Concrete instance (critical for Map keys)
+      const concreteOutput = environment.createConcrete(result);
+      environment.bind(action.output, concreteOutput);
 
       const stateBefore = currentState;
 
-      // Apply update callbacks (using symbolic state and symbolic variables)
+      // Update model state with Symbolic variables
+      // Using action.input/action.output (not resolved) preserves Variables for Map keys
       for (const callback of action.command.callbacks) {
         if (callback.type === 'update') {
           currentState = callback.update(
@@ -371,11 +502,11 @@ export async function executeSequential<State>(
         }
       }
 
-      // Resolve state again for postcondition checking
+      // Resolve state for ensure callbacks (Variables → plain values)
       const resolvedStateBefore = resolveState(stateBefore, environment);
       const resolvedStateAfter = resolveState(currentState, environment);
 
-      // Check ensure callbacks with resolved values
+      // Check postconditions with unwrapped values
       for (const callback of action.command.callbacks) {
         if (callback.type === 'ensure') {
           if (
@@ -388,14 +519,11 @@ export async function executeSequential<State>(
           ) {
             return {
               success: false,
-              failureDetails: `Postcondition failed at action ${i}: ${JSON.stringify(
-                {
-                  input: resolvedInput,
-                  output: result,
-                  stateBefore: resolvedStateBefore,
-                  stateAfter: resolvedStateAfter,
-                }
-              )}`,
+              failureDetails: `Postcondition failed at action ${i}
+Input: ${serializeForErrorMessage(resolvedInput)}
+Output: ${serializeForErrorMessage(result)}
+State before: ${serializeForErrorMessage(resolvedStateBefore)}
+State after: ${serializeForErrorMessage(resolvedStateAfter)}`,
             };
           }
         }
@@ -635,7 +763,11 @@ function generateBranchActions<State>(
   return actions;
 }
 
-// Interleaving algorithm (like Haskell's)
+// Generate all possible interleavings of two sequences
+// Maintains relative order within each sequence (not permutations!)
+// Example: interleave([A,B], [X,Y]) produces:
+//   [A,B,X,Y], [A,X,B,Y], [A,X,Y,B], [X,A,B,Y], [X,A,Y,B], [X,Y,A,B]
+// Used for linearizability: at least one interleaving must satisfy all conditions
 function interleave<T>(xs: T[], ys: T[]): T[][] {
   if (xs.length === 0 && ys.length === 0) {
     return [[]];
@@ -668,13 +800,15 @@ function interleave<T>(xs: T[], ys: T[]): T[][] {
 // Execute actions and check postconditions
 interface ActionExecution<State> {
   readonly action: Action<State, unknown, unknown>;
-  readonly result: unknown;
+  readonly result: Concrete<unknown> | undefined;
   readonly success: boolean;
   readonly error?: string;
 }
 
 
-// Linearization check
+// Check linearizability: can concurrent execution be explained by some sequential order?
+// Try all interleavings of branch actions; if any satisfies pre/postconditions, test passes
+// Uses actual results from parallel execution (not re-executing)
 async function linearize<State>(
   initialState: State,
   branch1Executions: ActionExecution<State>[],
@@ -685,14 +819,14 @@ async function linearize<State>(
   const branch2Actions = branch2Executions.map(exec => exec.action);
 
   // Create a mapping of action outputs to their actual results
-  const resultMapping = new Map<Symbolic<unknown>, unknown>();
+  const resultMapping = new Map<Symbolic<unknown>, Concrete<unknown>>();
   for (const exec of branch1Executions) {
-    if (exec.success) {
+    if (exec.success && exec.result) {
       resultMapping.set(exec.action.output, exec.result);
     }
   }
   for (const exec of branch2Executions) {
-    if (exec.success) {
+    if (exec.success && exec.result) {
       resultMapping.set(exec.action.output, exec.result);
     }
   }
@@ -749,7 +883,8 @@ async function linearize<State>(
 
         for (const callback of action.command.callbacks) {
           if (callback.type === 'ensure') {
-            if (!callback.check(resolvedStateBefore, resolvedStateAfter, resolvedInput, actualResult)) {
+            const actualValue = actualResult?.type === 'concrete' ? actualResult.value : actualResult;
+            if (!callback.check(resolvedStateBefore, resolvedStateAfter, resolvedInput, actualValue)) {
               interleavingValid = false;
               break;
             }
@@ -804,7 +939,8 @@ export async function executeParallel<State>(
 
       // Execute command
       const result = await action.command.executor(resolvedInput);
-      environment.bind(action.output, result);
+      const concreteOutput = environment.createConcrete(result);
+      environment.bind(action.output, concreteOutput);
 
       const stateBefore = currentState;
 
@@ -850,11 +986,12 @@ export async function executeParallel<State>(
       try {
         const resolvedInput = resolveInput(action.input, branchEnvironment);
         const result = await action.command.executor(resolvedInput);
-        branchEnvironment.bind(action.output, result);
+        const concreteOutput = branchEnvironment.createConcrete(result);
+        branchEnvironment.bind(action.output, concreteOutput);
 
         executions.push({
           action,
-          result,
+          result: concreteOutput,
           success: true,
         });
       } catch (error) {

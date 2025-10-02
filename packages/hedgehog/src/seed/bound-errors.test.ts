@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { Seed } from './index.js';
+import { Seed } from '../index.js';
 
 describe('Seed.nextBounded parameter validation', () => {
   test('rejects undefined bound with diagnostic error instead of BigInt conversion failure', () => {
