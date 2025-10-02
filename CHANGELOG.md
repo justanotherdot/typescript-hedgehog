@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+- `ResolvedInput<T>` type helper for state machine command executors
+- Executor functions now correctly show Variables are resolved to concrete values
+- New `TYPE-IMPROVEMENTS.md` documentation explaining symbolic vs resolved types
+- Type safety tests demonstrating Variable resolution in executors
+
+### Changed
+- Command executor signature now uses `ResolvedInput<Input>` instead of `Input`
+- This is a non-breaking change - existing code continues to work
+- Eliminates need for `as any` or `as string` casts in executor functions
+
 ## [0.2.0] - 2025-10-01
 
 ### Changed
