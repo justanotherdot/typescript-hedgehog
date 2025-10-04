@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { Gen } from './index.js';
+import { Gen } from '../index.js';
 
 describe('Gen.oneOf empty array regression test', () => {
   // Regression test for: "Cannot convert undefined to a BigInt" when using Gen.oneOf with empty arrays

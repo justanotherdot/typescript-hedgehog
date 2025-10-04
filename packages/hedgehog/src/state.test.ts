@@ -20,33 +20,50 @@ import {
 } from './state.js';
 
 // Example: Testing a simple counter system
+// Real system would be a Map<string, number> where string is counter ID
 interface CounterState {
-  counters: Map<Variable<number>, number>;
+  counters: Map<Variable<string>, number>;
 }
 
 function initialCounterState(): CounterState {
   return { counters: new Map() };
 }
 
-// Create counter command
-const createCounter: Command<CounterState, { initialValue: number }, number> =
+// Simulated real counter system
+const realCounters = new Map<string, number>();
+let counterIdSequence = 0;
+
+// Create counter command - returns a counter ID
+const createCounter: Command<CounterState, { initialValue: number }, string> =
   command(
     (_state) => Gen.object({ initialValue: Gen.int(Range.uniform(0, 100)) }),
-    async (input) => input.initialValue,
+    async (input) => {
+      // Real system: create counter, return its ID
+      const counterId = `counter-${counterIdSequence++}`;
+      realCounters.set(counterId, input.initialValue);
+      return counterId;
+    },
     require((_state, input) => input.initialValue >= 0),
-    update((state, input, output) => ({
-      counters: new Map(state.counters).set(output, input.initialValue),
-    })),
+    update((state, input, output) => {
+      // output is a Variable<string> - use it directly as Map key
+      return {
+        counters: new Map(state.counters).set(output, input.initialValue),
+      };
+    }),
     ensure(
-      (_stateBefore, _stateAfter, input, output) =>
-        output === input.initialValue
+      (_stateBefore, stateAfter, input, output) => {
+        // output is the unwrapped counter ID string
+        const modelValue = stateAfter.counters.get(output);
+        const realValue = realCounters.get(output);
+        return modelValue === input.initialValue && realValue === input.initialValue;
+      }
     )
   );
 
 // Increment counter command
 const incrementCounter: Command<
   CounterState,
-  { counter: Variable<number> },
+  { counterId: string },
   number
 > = command(
   (state) => {
@@ -54,31 +71,35 @@ const incrementCounter: Command<
     if (availableCounters.length === 0) return null;
 
     return Gen.object({
-      counter: Gen.item(availableCounters),
+      counterId: Gen.item(availableCounters),
     });
   },
-  async (_input) => {
-    // This would increment in the real system
-    return 1; // Simplified for testing
+  async (input) => {
+    // Real system: increment and return new value
+    const current = realCounters.get(input.counterId) ?? 0;
+    const newValue = current + 1;
+    realCounters.set(input.counterId, newValue);
+    return newValue;
   },
-  require((state, input) => state.counters.has(input.counter)),
+  require((state, input) => state.counters.has(input.counterId)),
   update((state, input, _output) => {
-    const currentValue = state.counters.get(input.counter) ?? 0;
+    const currentValue = state.counters.get(input.counterId) ?? 0;
     const newCounters = new Map(state.counters);
-    newCounters.set(input.counter, currentValue + 1);
+    newCounters.set(input.counterId, currentValue + 1);
     return { counters: newCounters };
   }),
-  ensure((stateBefore, stateAfter, input, _output) => {
-    const oldValue = stateBefore.counters.get(input.counter) ?? 0;
-    const newValue = stateAfter.counters.get(input.counter) ?? 0;
-    return newValue === oldValue + 1;
+  ensure((stateBefore, stateAfter, input, output) => {
+    const oldValue = stateBefore.counters.get(input.counterId) ?? 0;
+    const newValue = stateAfter.counters.get(input.counterId) ?? 0;
+    const realValue = realCounters.get(input.counterId) ?? 0;
+    return newValue === oldValue + 1 && output === realValue;
   })
 );
 
 // Read counter command
 const readCounter: Command<
   CounterState,
-  { counter: Variable<number> },
+  { counterId: string },
   number
 > = command(
   (state) => {
@@ -86,17 +107,17 @@ const readCounter: Command<
     if (availableCounters.length === 0) return null;
 
     return Gen.object({
-      counter: Gen.item(availableCounters),
+      counterId: Gen.item(availableCounters),
     });
   },
-  async (_input) => {
-    // This would read from the real system
-    return 42; // Simplified for testing
+  async (input) => {
+    // Real system: read current value
+    return realCounters.get(input.counterId) ?? 0;
   },
-  require((state, input) => state.counters.has(input.counter)),
+  require((state, input) => state.counters.has(input.counterId)),
   update((state, _input, _output) => state), // Read doesn't change state
   ensure((stateBefore, _stateAfter, input, output) => {
-    const expectedValue = stateBefore.counters.get(input.counter) ?? 0;
+    const expectedValue = stateBefore.counters.get(input.counterId) ?? 0;
     return output === expectedValue;
   })
 );
@@ -124,8 +145,8 @@ describe('State Machine Testing', () => {
       const env = new Environment();
       const sym = newVar<string>('test');
 
-      env.bind(sym, 'hello');
-      expect(env.lookup(sym)).toBe('hello');
+      env.bind(sym, new Concrete('hello'));
+      expect(env.lookup(sym)?.value).toBe('hello');
       expect(env.has(sym)).toBe(true);
     });
 
@@ -134,7 +155,7 @@ describe('State Machine Testing', () => {
       const sym = newVar<number>('number');
       const concrete = new Concrete(123);
 
-      env.bind(sym, 456);
+      env.bind(sym, new Concrete(456));
 
       expect(env.reify(sym)).toBe(456);
       expect(env.reify(concrete)).toBe(123);
@@ -144,13 +165,13 @@ describe('State Machine Testing', () => {
       const env1 = new Environment();
       const sym = newVar<string>('test');
 
-      env1.bind(sym, 'original');
+      env1.bind(sym, new Concrete('original'));
       const env2 = env1.clone();
 
-      env2.bind(sym, 'modified');
+      env2.bind(sym, new Concrete('modified'));
 
-      expect(env1.lookup(sym)).toBe('original');
-      expect(env2.lookup(sym)).toBe('modified');
+      expect(env1.lookup(sym)?.value).toBe('original');
+      expect(env2.lookup(sym)?.value).toBe('modified');
     });
   });
 
@@ -188,7 +209,7 @@ describe('State Machine Testing', () => {
       // Create a simple sequence manually for testing
       const mockCreateAction = {
         input: { initialValue: 5 },
-        output: newVar<number>('counter'),
+        output: newVar<string>('counter'),
         command: createCounter,
       };
 

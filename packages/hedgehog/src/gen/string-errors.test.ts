@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { Gen, Range } from './index.js';
+import { Gen, Range } from '../index.js';
 
 describe('Gen.string parameter validation and convenience methods', () => {
   test('rejects invalid Range parameter with helpful error message', () => {
