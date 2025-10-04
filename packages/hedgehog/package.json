@@ -1,6 +1,6 @@
 {
   "name": "@justanotherdot/hedgehog",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Property-based testing library for TypeScript, inspired by Hedgehog",
   "type": "module",
   "main": "dist/index.js",
@@ -78,7 +78,7 @@
     }
   },
   "dependencies": {
-    "@justanotherdot/hedgehog-splitmix-wasm": "^0.2.0"
+    "@justanotherdot/hedgehog-splitmix-wasm": "^0.3.0"
   },
   "files": [
     "dist",
