@@ -2,16 +2,32 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-10-04
+
+### Fixed
+- **CRITICAL**: Fixed Variable equality for Map keys in state machine testing
+- Map<Variable, Data> now correctly handles duplicate values from executors
+- Model and SUT with same data structure now produce identical results after resolution
+- Resolution functions now correctly unwrap Variables for executors and ensure callbacks
+
 ### Added
 - `ResolvedInput<T>` type helper for state machine command executors
-- Executor functions now correctly show Variables are resolved to concrete values
-- Documentation in `docs/state-machine-testing.md` explaining symbolic vs resolved types
-- Variable resolution tests in `state-advanced.test.ts` demonstrating resolved types
+- Interning cache in Environment for value-based equality via reference equality
+- `docs/state-machine-implementation.md` - Implementation guide for maintainers
+- `docs/state-machine-testing.md` - Comprehensive user guide with examples
+- `meta/state-machine-internals.test.ts` - Tests for interning and model-SUT parity
+- `state-variable-map-key.test.ts` - Regression tests for Map behavior with Variables
 
 ### Changed
 - Command executor signature now uses `ResolvedInput<Input>` instead of `Input`
-- This is a non-breaking change - existing code continues to work
-- Eliminates need for `as any` or `as string` casts in executor functions
+- Update callbacks receive Symbolic variables (for Map keys)
+- Ensure callbacks receive unwrapped plain values (for comparison)
+- Environment cache is shared across clones for concurrent operation checking
+- Test files reorganized by domain (gen/, seed/, meta/)
+
+### Removed
+- Verbose demo and walkthrough test files
+- Unnecessary state machine documentation files
 
 ## [0.2.0] - 2025-10-01
 
@@ -80,6 +96,7 @@
 - Bulk operations show significant speedups in benchmarks (see `npm run bench`)
 - WebAssembly implementation available for CPU-intensive workloads
 
+[0.3.0]: https://github.com/justanotherdot/typescript-hedgehog/releases/tag/0.3.0
 [0.2.0]: https://github.com/justanotherdot/typescript-hedgehog/releases/tag/0.2.0
 [0.1.2]: https://github.com/justanotherdot/typescript-hedgehog/releases/tag/0.1.2
 [0.1.1]: https://github.com/justanotherdot/typescript-hedgehog/releases/tag/0.1.1
