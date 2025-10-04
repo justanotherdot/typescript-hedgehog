@@ -6,7 +6,12 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { WorkerLikePool, defaultWorkerLikePoolConfig, getWorkerLikePool, shutdownWorkerLikePool } from '../worker.js';
+import {
+  WorkerLikePool,
+  defaultWorkerLikePoolConfig,
+  getWorkerLikePool,
+  shutdownWorkerLikePool,
+} from '../worker.js';
 
 describe('Worker Management Meta-Tests', () => {
   let workerPool: WorkerLikePool;
@@ -91,14 +96,16 @@ describe('Worker Management Meta-Tests', () => {
 
       try {
         const slowTestFunction = async (_input: number) => {
-          await new Promise(resolve => setTimeout(resolve, 500)); // Longer than 100ms timeout
+          await new Promise((resolve) => setTimeout(resolve, 500)); // Longer than 100ms timeout
           return {
             type: 'pass' as const,
             testsRun: 1,
           };
         };
 
-        await expect(timeoutPool.executeTest(42, slowTestFunction)).rejects.toThrow();
+        await expect(
+          timeoutPool.executeTest(42, slowTestFunction)
+        ).rejects.toThrow();
       } finally {
         await timeoutPool.shutdown();
       }
@@ -133,12 +140,15 @@ describe('Worker Management Meta-Tests', () => {
       const initialStats = workerPool.getStatus();
       expect(initialStats.activeTests).toBe(0);
 
-      const result = await workerPool.executeTest(42, async (_input: number) => {
-        return {
-          type: 'pass' as const,
-          testsRun: 1,
-        };
-      });
+      const result = await workerPool.executeTest(
+        42,
+        async (_input: number) => {
+          return {
+            type: 'pass' as const,
+            testsRun: 1,
+          };
+        }
+      );
 
       expect(result.success).toBe(true);
 
@@ -171,7 +181,7 @@ describe('Worker Management Meta-Tests', () => {
       }
 
       // Should have used both workers
-      const workerIds = new Set(results.map(r => r.workerId));
+      const workerIds = new Set(results.map((r) => r.workerId));
       expect(workerIds.size).toBeGreaterThan(1);
     });
 
@@ -231,7 +241,6 @@ describe('Worker Management Meta-Tests', () => {
       expect(finalStats.totalWorkers).toBe(0);
       expect(finalStats.pendingTests).toBe(0);
     });
-
   });
 
   describe('Health Checking', () => {
@@ -248,7 +257,6 @@ describe('Worker Management Meta-Tests', () => {
       expect(result.success).toBe(true);
     });
   });
-
 
   describe('Global Worker Pool Management', () => {
     afterEach(async () => {
@@ -300,7 +308,7 @@ describe('Worker Management Meta-Tests', () => {
         // This closure won't work in workers due to variable serialization limits
         const result = input * multiplier;
         return {
-          type: result > 0 ? 'pass' as const : 'fail' as const,
+          type: result > 0 ? ('pass' as const) : ('fail' as const),
           testsRun: 1,
         };
       };
@@ -310,7 +318,10 @@ describe('Worker Management Meta-Tests', () => {
         const result = await workerPool.executeTest(5, testFunction);
 
         // If we get here, check if it's a failure result
-        if (!result.success && result.error?.includes('multiplier is not defined')) {
+        if (
+          !result.success &&
+          result.error?.includes('multiplier is not defined')
+        ) {
           // Alternative expected failure if closure made it through but failed at runtime
           expect(result.error).toContain('multiplier is not defined');
         } else {
@@ -320,7 +331,9 @@ describe('Worker Management Meta-Tests', () => {
       } catch (error) {
         // Expected: Function validation should reject closures
         expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toContain('not safe for worker execution');
+        expect((error as Error).message).toContain(
+          'not safe for worker execution'
+        );
         expect((error as Error).message).toContain('multiplier');
       }
     });

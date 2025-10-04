@@ -8,13 +8,21 @@
 
 import { parentPort, workerData } from 'worker_threads';
 import { performance } from 'perf_hooks';
-import { deserializeFunction, type SerializedFunction } from './function-serializer.js';
+import {
+  deserializeFunction,
+  type SerializedFunction,
+} from './function-serializer.js';
 
 /**
  * Worker message types for communication with main thread.
  */
 type WorkerMessage =
-  | { type: 'execute-test'; testId: string; input: unknown; serializedFunction: SerializedFunction }
+  | {
+      type: 'execute-test';
+      testId: string;
+      input: unknown;
+      serializedFunction: SerializedFunction;
+    }
   | { type: 'ping' }
   | { type: 'terminate' }
   | { type: 'health-check' };
@@ -93,9 +101,10 @@ async function executeTest(
 
   try {
     // Deserialize the test function
-    const testFunction = deserializeFunction<(input: unknown) => TestResult | Promise<TestResult>>(
-      serializedFunction
-    );
+    const testFunction =
+      deserializeFunction<(input: unknown) => TestResult | Promise<TestResult>>(
+        serializedFunction
+      );
 
     // Execute the test function with timeout protection
     const result = await executeWithTimeout(testFunction, input, 30000); // 30 second timeout
@@ -114,7 +123,6 @@ async function executeTest(
       result: validatedResult,
       timing,
     });
-
   } catch (error) {
     const timing = performance.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -145,11 +153,11 @@ async function executeWithTimeout<T>(
     }, timeoutMs);
 
     Promise.resolve(fn(input))
-      .then(result => {
+      .then((result) => {
         clearTimeout(timeoutId);
         resolve(result);
       })
-      .catch(error => {
+      .catch((error) => {
         clearTimeout(timeoutId);
         reject(error);
       });
@@ -173,7 +181,10 @@ function validateTestResult(result: unknown): TestResult {
     const obj = result as Record<string, unknown>;
 
     // Validate required fields
-    if (!obj.type || !['pass', 'fail', 'discard'].includes(obj.type as string)) {
+    if (
+      !obj.type ||
+      !['pass', 'fail', 'discard'].includes(obj.type as string)
+    ) {
       throw new Error('Test result must have a valid type field');
     }
 

@@ -161,7 +161,10 @@ export class Gen<T> {
     return new Gen(generators.constant(value));
   }
 
-  static oneOf<T>(genListOrFirst?: Gen<T>[] | Gen<T>, ...rest: Gen<T>[]): Gen<T> {
+  static oneOf<T>(
+    genListOrFirst?: Gen<T>[] | Gen<T>,
+    ...rest: Gen<T>[]
+  ): Gen<T> {
     let genList: Gen<T>[];
 
     if (genListOrFirst === undefined) {
@@ -205,8 +208,8 @@ export class Gen<T> {
     if (args.length > 0) {
       throw new Error(
         'Gen.string() does not accept parameters. ' +
-        'For variable-length strings, use: Gen.int(Range.uniform(min, max)).bind(len => Gen.stringOfLength(len)) ' +
-        'or the convenience method Gen.stringBetween(min, max)'
+          'For variable-length strings, use: Gen.int(Range.uniform(min, max)).bind(len => Gen.stringOfLength(len)) ' +
+          'or the convenience method Gen.stringBetween(min, max)'
       );
     }
     const generatorFn = string();
@@ -219,7 +222,7 @@ export class Gen<T> {
   }
 
   static stringOfRange(range: Range<number>): Gen<string> {
-    return Gen.int(range).bind(length => Gen.stringOfLength(length));
+    return Gen.int(range).bind((length) => Gen.stringOfLength(length));
   }
 
   static stringBetween(min: number, max: number): Gen<string> {
@@ -254,8 +257,8 @@ export class Gen<T> {
   static fromSchema<T>(_schema: any): Gen<T> {
     throw new Error(
       'Zod integration has been moved to a separate import.\n' +
-      'Use: import { fromSchema } from \'@justanotherdot/hedgehog/zod\'\n' +
-      'Make sure to install zod: npm install zod'
+        "Use: import { fromSchema } from '@justanotherdot/hedgehog/zod'\n" +
+        'Make sure to install zod: npm install zod'
     );
   }
 

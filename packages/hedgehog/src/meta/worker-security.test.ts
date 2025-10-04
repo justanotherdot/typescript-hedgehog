@@ -8,7 +8,12 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { WorkerLikePool, defaultWorkerLikePoolConfig } from '../worker.js';
-import { serializeFunction, deserializeFunction, validateWorkerFunction, createWorkerSafeFunction } from '../worker/function-serializer.js';
+import {
+  serializeFunction,
+  deserializeFunction,
+  validateWorkerFunction,
+  createWorkerSafeFunction,
+} from '../worker/function-serializer.js';
 
 describe('Worker Security Meta-Tests', () => {
   let workerPool: WorkerLikePool;
@@ -36,18 +41,22 @@ describe('Worker Security Meta-Tests', () => {
         () => new Function('return 1')(),
         () => require('fs'),
         () => process.exit(0),
-        () => (global as any).secret = 'leaked',
+        () => ((global as any).secret = 'leaked'),
       ];
 
       for (const fn of allowedFunctions) {
         // Should not throw - these patterns don't interfere with worker execution
-        expect(() => createWorkerSafeFunction(fn, { allowUnsafe: true })).not.toThrow();
+        expect(() =>
+          createWorkerSafeFunction(fn, { allowUnsafe: true })
+        ).not.toThrow();
       }
 
       // Closures should be detected as they won't work across process boundaries
       const outsideVar = 42;
       const closureFunction = (x: number) => x + outsideVar;
-      expect(() => createWorkerSafeFunction(closureFunction)).toThrow(/closure/);
+      expect(() => createWorkerSafeFunction(closureFunction)).toThrow(
+        /closure/
+      );
     });
 
     it('should accept safe test functions', () => {
@@ -82,7 +91,7 @@ describe('Worker Security Meta-Tests', () => {
 
       const validation = validateWorkerFunction(functionWithClosure);
       expect(validation.isValid).toBe(false);
-      expect(validation.errors.some(e => e.includes('closures'))).toBe(true);
+      expect(validation.errors.some((e) => e.includes('closures'))).toBe(true);
     });
 
     it('should reject oversized function code', () => {
@@ -91,18 +100,22 @@ describe('Worker Security Meta-Tests', () => {
       const largeFunction = new Function('return ' + largeFunctionCode)();
 
       const serialized = serializeFunction(largeFunction);
-      expect(() => deserializeFunction(serialized)).toThrow(/exceeds maximum size/);
+      expect(() => deserializeFunction(serialized)).toThrow(
+        /exceeds maximum size/
+      );
     });
 
     it('should reject functions with too many parameters', () => {
       // Function with too many parameters
       const manyParamFunction = new Function(
-        Array.from({length: 15}, (_, i) => `p${i}`).join(','),
+        Array.from({ length: 15 }, (_, i) => `p${i}`).join(','),
         'return p0'
       );
 
       const serialized = serializeFunction(manyParamFunction);
-      expect(() => deserializeFunction(serialized)).toThrow(/too many parameters/);
+      expect(() => deserializeFunction(serialized)).toThrow(
+        /too many parameters/
+      );
     });
   });
 
@@ -129,8 +142,10 @@ describe('Worker Security Meta-Tests', () => {
         const results = await Promise.allSettled(manyTests);
 
         // Some tests should succeed, others might be rejected due to resource limits
-        const succeeded = results.filter(r => r.status === 'fulfilled').length;
-        const failed = results.filter(r => r.status === 'rejected').length;
+        const succeeded = results.filter(
+          (r) => r.status === 'fulfilled'
+        ).length;
+        const failed = results.filter((r) => r.status === 'rejected').length;
 
         expect(succeeded + failed).toBe(8);
         expect(succeeded).toBeGreaterThan(0); // At least some should work
@@ -147,14 +162,14 @@ describe('Worker Security Meta-Tests', () => {
 
       // Start concurrent tests (should hit pending test limits)
       const promises = Array.from({ length: 10 }, (_, i) =>
-        workerPool.executeTest(i, testFunction).catch(error => error)
+        workerPool.executeTest(i, testFunction).catch((error) => error)
       );
 
       const results = await Promise.all(promises);
 
       // Should have a mix of successful and failed results
-      const errors = results.filter(r => r instanceof Error);
-      const successes = results.filter(r => !(r instanceof Error));
+      const errors = results.filter((r) => r instanceof Error);
+      const successes = results.filter((r) => !(r instanceof Error));
 
       expect(errors.length + successes.length).toBe(10);
 
@@ -193,7 +208,7 @@ describe('Worker Security Meta-Tests', () => {
       // Both should complete successfully
       const [testResults, healthResults] = await Promise.all([
         Promise.all(testPromises),
-        Promise.all(healthPromises)
+        Promise.all(healthPromises),
       ]);
 
       // All tests should succeed
@@ -279,7 +294,7 @@ describe('Worker Security Meta-Tests', () => {
 
     it('should handle extremely large inputs appropriately', async () => {
       const testFunction = (input: string) => ({
-        type: input.length > 1000 ? 'fail' as const : 'pass' as const,
+        type: input.length > 1000 ? ('fail' as const) : ('pass' as const),
         testsRun: 1,
       });
 
@@ -325,7 +340,9 @@ describe('Worker Security Meta-Tests', () => {
     it('should maintain pool health after error conditions', async () => {
       // Test just a few key error scenarios, not exhaustive
       const errorConditions = [
-        () => { throw new Error('Runtime error'); },
+        () => {
+          throw new Error('Runtime error');
+        },
         () => Promise.reject(new Error('Async error')),
       ];
 

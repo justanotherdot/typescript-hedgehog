@@ -50,77 +50,71 @@ const createCounter: Command<CounterState, { initialValue: number }, string> =
         counters: new Map(state.counters).set(output, input.initialValue),
       };
     }),
-    ensure(
-      (_stateBefore, stateAfter, input, output) => {
-        // output is the unwrapped counter ID string
-        const modelValue = stateAfter.counters.get(output);
-        const realValue = realCounters.get(output);
-        return modelValue === input.initialValue && realValue === input.initialValue;
-      }
-    )
+    ensure((_stateBefore, stateAfter, input, output) => {
+      // output is the unwrapped counter ID string
+      const modelValue = stateAfter.counters.get(output);
+      const realValue = realCounters.get(output);
+      return (
+        modelValue === input.initialValue && realValue === input.initialValue
+      );
+    })
   );
 
 // Increment counter command
-const incrementCounter: Command<
-  CounterState,
-  { counterId: string },
-  number
-> = command(
-  (state) => {
-    const availableCounters = Array.from(state.counters.keys());
-    if (availableCounters.length === 0) return null;
+const incrementCounter: Command<CounterState, { counterId: string }, number> =
+  command(
+    (state) => {
+      const availableCounters = Array.from(state.counters.keys());
+      if (availableCounters.length === 0) return null;
 
-    return Gen.object({
-      counterId: Gen.item(availableCounters),
-    });
-  },
-  async (input) => {
-    // Real system: increment and return new value
-    const current = realCounters.get(input.counterId) ?? 0;
-    const newValue = current + 1;
-    realCounters.set(input.counterId, newValue);
-    return newValue;
-  },
-  require((state, input) => state.counters.has(input.counterId)),
-  update((state, input, _output) => {
-    const currentValue = state.counters.get(input.counterId) ?? 0;
-    const newCounters = new Map(state.counters);
-    newCounters.set(input.counterId, currentValue + 1);
-    return { counters: newCounters };
-  }),
-  ensure((stateBefore, stateAfter, input, output) => {
-    const oldValue = stateBefore.counters.get(input.counterId) ?? 0;
-    const newValue = stateAfter.counters.get(input.counterId) ?? 0;
-    const realValue = realCounters.get(input.counterId) ?? 0;
-    return newValue === oldValue + 1 && output === realValue;
-  })
-);
+      return Gen.object({
+        counterId: Gen.item(availableCounters),
+      });
+    },
+    async (input) => {
+      // Real system: increment and return new value
+      const current = realCounters.get(input.counterId) ?? 0;
+      const newValue = current + 1;
+      realCounters.set(input.counterId, newValue);
+      return newValue;
+    },
+    require((state, input) => state.counters.has(input.counterId)),
+    update((state, input, _output) => {
+      const currentValue = state.counters.get(input.counterId) ?? 0;
+      const newCounters = new Map(state.counters);
+      newCounters.set(input.counterId, currentValue + 1);
+      return { counters: newCounters };
+    }),
+    ensure((stateBefore, stateAfter, input, output) => {
+      const oldValue = stateBefore.counters.get(input.counterId) ?? 0;
+      const newValue = stateAfter.counters.get(input.counterId) ?? 0;
+      const realValue = realCounters.get(input.counterId) ?? 0;
+      return newValue === oldValue + 1 && output === realValue;
+    })
+  );
 
 // Read counter command
-const readCounter: Command<
-  CounterState,
-  { counterId: string },
-  number
-> = command(
-  (state) => {
-    const availableCounters = Array.from(state.counters.keys());
-    if (availableCounters.length === 0) return null;
+const readCounter: Command<CounterState, { counterId: string }, number> =
+  command(
+    (state) => {
+      const availableCounters = Array.from(state.counters.keys());
+      if (availableCounters.length === 0) return null;
 
-    return Gen.object({
-      counterId: Gen.item(availableCounters),
-    });
-  },
-  async (input) => {
-    // Real system: read current value
-    return realCounters.get(input.counterId) ?? 0;
-  },
-  require((state, input) => state.counters.has(input.counterId)),
-  update((state, _input, _output) => state), // Read doesn't change state
-  ensure((stateBefore, _stateAfter, input, output) => {
-    const expectedValue = stateBefore.counters.get(input.counterId) ?? 0;
-    return output === expectedValue;
-  })
-);
+      return Gen.object({
+        counterId: Gen.item(availableCounters),
+      });
+    },
+    async (input) => {
+      // Real system: read current value
+      return realCounters.get(input.counterId) ?? 0;
+    },
+    require((state, input) => state.counters.has(input.counterId)),
+    update((state, _input, _output) => state), // Read doesn't change state
+    ensure((stateBefore, _stateAfter, input, output) => {
+      const expectedValue = stateBefore.counters.get(input.counterId) ?? 0;
+      return output === expectedValue;
+    })
+  );
 
 describe('State Machine Testing', () => {
   describe('Variable System', () => {
@@ -375,7 +369,10 @@ describe('Key-Value Store Example', () => {
 
       if (!result.ok) {
         console.log('Parallel test failed:', result.error);
-        console.log('Counterexample:', JSON.stringify(result.counterexample, null, 2));
+        console.log(
+          'Counterexample:',
+          JSON.stringify(result.counterexample, null, 2)
+        );
       }
 
       expect(result.ok).toBe(true);
@@ -383,7 +380,11 @@ describe('Key-Value Store Example', () => {
 
     it('should detect linearization violations in parallel execution', async () => {
       // Create a command that violates linearization when run in parallel
-      const unsafeIncrement: Command<CounterState, { counter: Variable<number> }, number> = command(
+      const unsafeIncrement: Command<
+        CounterState,
+        { counter: Variable<number> },
+        number
+      > = command(
         (state) => {
           const counters = Array.from(state.counters.keys());
           if (counters.length === 0) return null;
@@ -391,7 +392,7 @@ describe('Key-Value Store Example', () => {
         },
         async (_input) => {
           // Simulate a non-atomic increment that can cause race conditions
-          await new Promise(resolve => setTimeout(resolve, 1));
+          await new Promise((resolve) => setTimeout(resolve, 1));
           return Math.floor(Math.random() * 100); // Return random value instead of proper increment
         },
         require((state, input) => state.counters.has(input.counter)),

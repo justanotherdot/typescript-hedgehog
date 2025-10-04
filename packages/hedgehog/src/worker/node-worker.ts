@@ -9,7 +9,10 @@ import { Worker } from 'worker_threads';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { performance } from 'perf_hooks';
-import { createWorkerSafeFunction, type SerializedFunction } from './function-serializer.js';
+import {
+  createWorkerSafeFunction,
+  type SerializedFunction,
+} from './function-serializer.js';
 
 // Get the current module's directory for worker script path
 const __filename = fileURLToPath(import.meta.url);
@@ -18,7 +21,12 @@ const __filename = fileURLToPath(import.meta.url);
  * Message types for worker communication.
  */
 type WorkerMessage =
-  | { type: 'execute-test'; testId: string; input: unknown; serializedFunction: SerializedFunction }
+  | {
+      type: 'execute-test';
+      testId: string;
+      input: unknown;
+      serializedFunction: SerializedFunction;
+    }
   | { type: 'ping' }
   | { type: 'terminate' }
   | { type: 'health-check'; healthCheckId?: string };
@@ -52,8 +60,13 @@ function validateWorkerMessage(message: unknown): WorkerMessage {
       if (msg.testId.length > 256) {
         throw new Error('execute-test testId too long (max 256 chars)');
       }
-      if (!msg.serializedFunction || typeof msg.serializedFunction !== 'object') {
-        throw new Error('execute-test message must have a serializedFunction object');
+      if (
+        !msg.serializedFunction ||
+        typeof msg.serializedFunction !== 'object'
+      ) {
+        throw new Error(
+          'execute-test message must have a serializedFunction object'
+        );
       }
       // input can be any type, so we don't validate it
       return msg as WorkerMessage;
@@ -187,23 +200,29 @@ export class NodeWorkerInstance {
   private readonly workerId: string;
   private readonly createdAt: number;
   private readonly maxPendingTests: number;
-  private readonly pendingTests = new Map<string, {
-    resolve: (result: NodeWorkerTestResult) => void;
-    reject: (error: Error) => void;
-    timeoutId: ReturnType<typeof setTimeout>;
-    createdAt: number;
-  }>();
+  private readonly pendingTests = new Map<
+    string,
+    {
+      resolve: (result: NodeWorkerTestResult) => void;
+      reject: (error: Error) => void;
+      timeoutId: ReturnType<typeof setTimeout>;
+      createdAt: number;
+    }
+  >();
 
   private isHealthy = true;
   private isReady = false;
   private lastHealthCheck = 0;
   private lastError?: string;
   private isTerminating = false;
-  private pendingHealthChecks = new Map<string, {
-    resolve: (status: HealthStatus) => void;
-    reject: (error: Error) => void;
-    timeoutId: ReturnType<typeof setTimeout>;
-  }>();
+  private pendingHealthChecks = new Map<
+    string,
+    {
+      resolve: (status: HealthStatus) => void;
+      reject: (error: Error) => void;
+      timeoutId: ReturnType<typeof setTimeout>;
+    }
+  >();
 
   constructor(workerId: string, config: NodeWorkerConfig) {
     this.workerId = workerId;
@@ -228,13 +247,17 @@ export class NodeWorkerInstance {
     }
 
     if (this.config.enableLogging) {
-      console.log(`Creating Node.js worker with script path: ${workerScriptPath}`);
+      console.log(
+        `Creating Node.js worker with script path: ${workerScriptPath}`
+      );
     }
 
     try {
       // Add more detailed logging for CI debugging
       if (this.config.enableLogging) {
-        console.log(`Attempting to create worker with script: ${workerScriptPath}`);
+        console.log(
+          `Attempting to create worker with script: ${workerScriptPath}`
+        );
         console.log(`Working directory: ${process.cwd()}`);
         console.log(`__filename: ${__filename}`);
         console.log(`__dirname: ${dirname(__filename)}`);
@@ -249,9 +272,13 @@ export class NodeWorkerInstance {
           console.log(`Listing directory contents:`);
           try {
             const dirContents = fs.readdirSync(dirname(workerScriptPath));
-            console.log(`Directory ${dirname(workerScriptPath)}: [${dirContents.join(', ')}]`);
+            console.log(
+              `Directory ${dirname(workerScriptPath)}: [${dirContents.join(', ')}]`
+            );
           } catch (_dirError) {
-            console.error(`Cannot read directory ${dirname(workerScriptPath)}: ${_dirError}`);
+            console.error(
+              `Cannot read directory ${dirname(workerScriptPath)}: ${_dirError}`
+            );
           }
         }
       }
@@ -287,7 +314,11 @@ export class NodeWorkerInstance {
 
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
-        reject(new Error(`Worker ${this.workerId} did not become ready within ${timeoutMs}ms`));
+        reject(
+          new Error(
+            `Worker ${this.workerId} did not become ready within ${timeoutMs}ms`
+          )
+        );
       }, timeoutMs);
 
       const checkReady = () => {
@@ -321,7 +352,9 @@ export class NodeWorkerInstance {
 
     // Check queue limits
     if (this.pendingTests.size >= this.maxPendingTests) {
-      throw new Error(`Worker ${this.workerId} queue full (${this.maxPendingTests} pending tests)`);
+      throw new Error(
+        `Worker ${this.workerId} queue full (${this.maxPendingTests} pending tests)`
+      );
     }
 
     if (!this.isReady) {
@@ -344,8 +377,14 @@ export class NodeWorkerInstance {
         // Set up timeout
         const timeoutId = setTimeout(() => {
           this.pendingTests.delete(testId);
-          this.markUnhealthy(`Test ${testId} timed out after ${this.config.testTimeout}ms`);
-          reject(new Error(`Test ${testId} timed out after ${this.config.testTimeout}ms`));
+          this.markUnhealthy(
+            `Test ${testId} timed out after ${this.config.testTimeout}ms`
+          );
+          reject(
+            new Error(
+              `Test ${testId} timed out after ${this.config.testTimeout}ms`
+            )
+          );
         }, this.config.testTimeout);
 
         // Register pending test with creation timestamp
@@ -353,7 +392,7 @@ export class NodeWorkerInstance {
           resolve,
           reject,
           timeoutId,
-          createdAt: performance.now()
+          createdAt: performance.now(),
         });
 
         try {
@@ -376,9 +415,10 @@ export class NodeWorkerInstance {
           reject(new Error(`Failed to send test message: ${messageError}`));
         }
       });
-
     } catch (error) {
-      throw new Error(`Failed to execute test on worker ${this.workerId}: ${error}`);
+      throw new Error(
+        `Failed to execute test on worker ${this.workerId}: ${error}`
+      );
     }
   }
 
@@ -405,12 +445,16 @@ export class NodeWorkerInstance {
       }, this.config.healthCheckTimeout);
 
       // Register pending health check
-      this.pendingHealthChecks.set(healthCheckId, { resolve, reject, timeoutId });
+      this.pendingHealthChecks.set(healthCheckId, {
+        resolve,
+        reject,
+        timeoutId,
+      });
 
       // Send health check request
       this.worker.postMessage({
         type: 'health-check',
-        healthCheckId
+        healthCheckId,
       } satisfies WorkerMessage);
     });
   }
@@ -423,7 +467,7 @@ export class NodeWorkerInstance {
       return false;
     }
 
-    return new Promise<boolean>(resolve => {
+    return new Promise<boolean>((resolve) => {
       const timeoutId = setTimeout(() => {
         this.markUnhealthy('Ping timed out');
         resolve(false);
@@ -437,7 +481,9 @@ export class NodeWorkerInstance {
 
           // Restore original message handlers
           this.worker.removeAllListeners('message');
-          originalListeners.forEach(handler => this.worker.on('message', handler as (...args: any[]) => void));
+          originalListeners.forEach((handler) =>
+            this.worker.on('message', handler as (...args: any[]) => void)
+          );
 
           resolve(true);
         }
@@ -457,7 +503,9 @@ export class NodeWorkerInstance {
     this.isHealthy = false;
 
     if (this.config.enableLogging) {
-      console.log(`Terminating worker ${this.workerId} with ${this.pendingTests.size} pending tests`);
+      console.log(
+        `Terminating worker ${this.workerId} with ${this.pendingTests.size} pending tests`
+      );
     }
 
     // Cancel all pending tests
@@ -473,10 +521,15 @@ export class NodeWorkerInstance {
     this.pendingTests.clear();
 
     // Cancel all pending health checks
-    for (const [healthCheckId, { reject, timeoutId }] of this.pendingHealthChecks) {
+    for (const [healthCheckId, { reject, timeoutId }] of this
+      .pendingHealthChecks) {
       try {
         clearTimeout(timeoutId);
-        reject(new Error(`Health check ${healthCheckId} cancelled due to worker termination`));
+        reject(
+          new Error(
+            `Health check ${healthCheckId} cancelled due to worker termination`
+          )
+        );
       } catch (error) {
         pendingTestErrors.push(error as Error);
       }
@@ -489,7 +542,9 @@ export class NodeWorkerInstance {
       await new Promise<void>((resolve) => {
         const forceTimeoutId = setTimeout(() => {
           if (this.config.enableLogging) {
-            console.log(`Worker ${this.workerId} graceful shutdown timed out, forcing termination`);
+            console.log(
+              `Worker ${this.workerId} graceful shutdown timed out, forcing termination`
+            );
           }
           resolve(); // Don't reject, just proceed to force termination
         }, gracefulTimeout);
@@ -497,7 +552,9 @@ export class NodeWorkerInstance {
         const exitHandler = (code: number) => {
           clearTimeout(forceTimeoutId);
           if (this.config.enableLogging) {
-            console.log(`Worker ${this.workerId} exited gracefully with code ${code}`);
+            console.log(
+              `Worker ${this.workerId} exited gracefully with code ${code}`
+            );
           }
           resolve();
         };
@@ -505,7 +562,10 @@ export class NodeWorkerInstance {
         const errorHandler = (error: Error) => {
           clearTimeout(forceTimeoutId);
           if (this.config.enableLogging) {
-            console.log(`Worker ${this.workerId} error during graceful shutdown:`, error);
+            console.log(
+              `Worker ${this.workerId} error during graceful shutdown:`,
+              error
+            );
           }
           resolve(); // Don't reject, proceed to force termination
         };
@@ -516,7 +576,9 @@ export class NodeWorkerInstance {
 
         try {
           // Send termination message
-          this.worker.postMessage({ type: 'terminate' } satisfies WorkerMessage);
+          this.worker.postMessage({
+            type: 'terminate',
+          } satisfies WorkerMessage);
         } catch (_error) {
           // If we can't send the message, just proceed to force termination
           clearTimeout(forceTimeoutId);
@@ -527,7 +589,10 @@ export class NodeWorkerInstance {
       });
     } catch (error) {
       if (this.config.enableLogging) {
-        console.error(`Error during graceful shutdown of worker ${this.workerId}:`, error);
+        console.error(
+          `Error during graceful shutdown of worker ${this.workerId}:`,
+          error
+        );
       }
     }
 
@@ -539,11 +604,13 @@ export class NodeWorkerInstance {
         new Promise<void>((resolve) => {
           setTimeout(() => {
             if (this.config.enableLogging) {
-              console.log(`Worker ${this.workerId} force termination timed out, continuing anyway`);
+              console.log(
+                `Worker ${this.workerId} force termination timed out, continuing anyway`
+              );
             }
             resolve();
           }, 1000); // 1 second timeout for force termination
-        })
+        }),
       ]);
 
       if (this.config.enableLogging) {
@@ -551,14 +618,20 @@ export class NodeWorkerInstance {
       }
     } catch (error) {
       if (this.config.enableLogging) {
-        console.error(`Error forcing termination of worker ${this.workerId}:`, error);
+        console.error(
+          `Error forcing termination of worker ${this.workerId}:`,
+          error
+        );
       }
       // Worker might already be dead, this is OK
     }
 
     // Log any errors that occurred during pending test cancellation
     if (pendingTestErrors.length > 0 && this.config.enableLogging) {
-      console.warn(`Errors occurred while cancelling pending tests for worker ${this.workerId}:`, pendingTestErrors);
+      console.warn(
+        `Errors occurred while cancelling pending tests for worker ${this.workerId}:`,
+        pendingTestErrors
+      );
     }
   }
 
@@ -611,7 +684,10 @@ export class NodeWorkerInstance {
         } catch (validationError) {
           this.markUnhealthy(`Invalid message from worker: ${validationError}`);
           if (this.config.enableLogging) {
-            console.error(`Worker ${this.workerId} sent invalid message:`, validationError);
+            console.error(
+              `Worker ${this.workerId} sent invalid message:`,
+              validationError
+            );
           }
           return;
         }
@@ -646,20 +722,28 @@ export class NodeWorkerInstance {
               this.lastHealthCheck = performance.now();
               pending.resolve(response.status);
             } else if (this.config.enableLogging) {
-              console.warn(`Received health-status response with unknown or missing ID: ${healthCheckId}`);
+              console.warn(
+                `Received health-status response with unknown or missing ID: ${healthCheckId}`
+              );
             }
             break;
           }
 
           default:
             if (this.config.enableLogging) {
-              console.warn(`Unknown response type from worker ${this.workerId}:`, (response as any).type);
+              console.warn(
+                `Unknown response type from worker ${this.workerId}:`,
+                (response as any).type
+              );
             }
         }
       } catch (error) {
         this.markUnhealthy(`Error handling message: ${error}`);
         if (this.config.enableLogging) {
-          console.error(`Error handling message from worker ${this.workerId}:`, error);
+          console.error(
+            `Error handling message from worker ${this.workerId}:`,
+            error
+          );
         }
       }
     });
@@ -694,7 +778,11 @@ export class NodeWorkerInstance {
   /**
    * Handle successful test result.
    */
-  private handleTestResult(response: { testId: string; result: TestResult; timing: number }): void {
+  private handleTestResult(response: {
+    testId: string;
+    result: TestResult;
+    timing: number;
+  }): void {
     const pending = this.pendingTests.get(response.testId);
     if (pending) {
       clearTimeout(pending.timeoutId);
@@ -712,7 +800,11 @@ export class NodeWorkerInstance {
   /**
    * Handle test error.
    */
-  private handleTestError(response: { testId: string; error: string; timing: number }): void {
+  private handleTestError(response: {
+    testId: string;
+    error: string;
+    timing: number;
+  }): void {
     const pending = this.pendingTests.get(response.testId);
     if (pending) {
       clearTimeout(pending.timeoutId);

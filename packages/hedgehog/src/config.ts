@@ -4,7 +4,12 @@
 export class Config {
   constructor(
     configOrTestLimit?:
-      | { testLimit?: number; shrinkLimit?: number; sizeLimit?: number; discardLimit?: number }
+      | {
+          testLimit?: number;
+          shrinkLimit?: number;
+          sizeLimit?: number;
+          discardLimit?: number;
+        }
       | number,
     shrinkLimit: number = 1000,
     sizeLimit: number = 100,

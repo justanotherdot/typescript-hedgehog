@@ -45,7 +45,9 @@ describe('Parallel Property Testing Meta-Tests', () => {
       expect(result.workerResults).toHaveLength(workerCount);
 
       // Each worker should have executed approximately the same number of tests
-      const testCounts = result.workerResults.map(wr => wr.timing.testsExecuted);
+      const testCounts = result.workerResults.map(
+        (wr) => wr.timing.testsExecuted
+      );
       const expectedPerWorker = Math.floor(9 / workerCount);
 
       for (const count of testCounts) {
@@ -71,7 +73,8 @@ describe('Parallel Property Testing Meta-Tests', () => {
 
       // Total tests executed should equal test count
       const totalExecuted = result.workerResults.reduce(
-        (sum, wr) => sum + wr.timing.testsExecuted, 0
+        (sum, wr) => sum + wr.timing.testsExecuted,
+        0
       );
       expect(totalExecuted).toBe(testCount);
     });
@@ -101,11 +104,7 @@ describe('Parallel Property Testing Meta-Tests', () => {
     });
 
     it('should track worker efficiency', async () => {
-      const property = forAllParallel(
-        Gen.int(1, 100),
-        (n) => n > 0,
-        2
-      );
+      const property = forAllParallel(Gen.int(1, 100), (n) => n > 0, 2);
 
       const config = new Config({ testLimit: 20 });
       const result = await property.run(config);
@@ -216,7 +215,9 @@ describe('Parallel Property Testing Meta-Tests', () => {
       expect(result1.outcome.type).toBe(result2.outcome.type);
 
       if (result1.outcome.type === 'fail' && result2.outcome.type === 'fail') {
-        expect(result1.outcome.counterexample).toBe(result2.outcome.counterexample);
+        expect(result1.outcome.counterexample).toBe(
+          result2.outcome.counterexample
+        );
       }
     });
   });
@@ -238,7 +239,9 @@ describe('Parallel Property Testing Meta-Tests', () => {
       // Check if load balancing issues are detected
       // Note: This might not always trigger depending on work distribution
       if (result.issues.loadBalancingIssues.length > 0) {
-        expect(result.issues.loadBalancingIssues[0]).toContain('Load imbalance');
+        expect(result.issues.loadBalancingIssues[0]).toContain(
+          'Load imbalance'
+        );
       }
     });
   });
@@ -253,14 +256,10 @@ describe('Parallel Property Testing Meta-Tests', () => {
 
           // Sequential execution
           const sequentialResults = inputs.map(testFn);
-          const sequentialPassed = sequentialResults.every(r => r);
+          const sequentialPassed = sequentialResults.every((r) => r);
 
           // Parallel execution
-          const parallelProperty = forAllParallel(
-            Gen.oneOf(inputs),
-            testFn,
-            2
-          );
+          const parallelProperty = forAllParallel(Gen.oneOf(inputs), testFn, 2);
 
           const config = new Config({ testLimit: inputs.length });
           const parallelResult = await parallelProperty.run(config);

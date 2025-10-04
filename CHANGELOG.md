@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Added
+- `Property.check()` method for formatted test output in vitest and other test frameworks
+- Clear counterexample display with shrink count, original failure, and reproduction info
+- Formatted classification statistics in failure output
+- `forAllNamed()` function for variable name tracking in failure reports
+- Variable names shown in counterexample output (e.g., `forAll 0 = 42 -- x`)
+
+### Removed
+- Noisy duplicate key warning from state machine testing
+
 ## [0.3.0] - 2025-10-04
 
 ### Fixed

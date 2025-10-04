@@ -46,27 +46,34 @@ export function serializeFunction(fn: Function): SerializedFunction {
  */
 function validateFunctionCode(code: string): void {
   // Size limits to prevent memory exhaustion
-  if (code.length > 100000) { // 100KB limit
+  if (code.length > 100000) {
+    // 100KB limit
     throw new Error('Function code exceeds maximum size limit (100KB)');
   }
 
   // Block patterns that interfere with function serialization
   const problematicPatterns = [
-    /\/\*[\s\S]*?\*\//,               // Block comments (could interfere with parsing)
-    /<!--[\s\S]*?-->/,                // HTML comments (could interfere with parsing)
+    /\/\*[\s\S]*?\*\//, // Block comments (could interfere with parsing)
+    /<!--[\s\S]*?-->/, // HTML comments (could interfere with parsing)
   ];
 
   for (const pattern of problematicPatterns) {
     if (pattern.test(code)) {
-      throw new Error(`Function contains pattern that may interfere with serialization: ${pattern.source}`);
+      throw new Error(
+        `Function contains pattern that may interfere with serialization: ${pattern.source}`
+      );
     }
   }
 
   // Validate basic function syntax
-  if (!code.trim().startsWith('function') &&
-      !code.trim().startsWith('(') &&
-      !code.trim().startsWith('async')) {
-    throw new Error('Function code must be a valid function expression or declaration');
+  if (
+    !code.trim().startsWith('function') &&
+    !code.trim().startsWith('(') &&
+    !code.trim().startsWith('async')
+  ) {
+    throw new Error(
+      'Function code must be a valid function expression or declaration'
+    );
   }
 
   // Check for balanced braces to catch basic syntax errors
@@ -117,7 +124,9 @@ function validateFunctionCode(code: string): void {
 /**
  * Deserialize and reconstruct a function in worker context with security validation.
  */
-export function deserializeFunction<T extends Function>(serialized: SerializedFunction): T {
+export function deserializeFunction<T extends Function>(
+  serialized: SerializedFunction
+): T {
   // Validate the serialized function structure
   if (!serialized || typeof serialized !== 'object') {
     throw new Error('Invalid serialized function: must be an object');
@@ -178,27 +187,34 @@ function analyzeFunctionCode(code: string): {
 
   // Parse function parameters more accurately
   const functionParamPatterns = [
-    /function\s*\w*\s*\(\s*([^)]*)\s*\)/,  // function name(params) or function(params)
-    /\(\s*([^)]*)\s*\)\s*=>/,              // (params) =>
-    /(\w+)\s*=>/,                          // param =>
+    /function\s*\w*\s*\(\s*([^)]*)\s*\)/, // function name(params) or function(params)
+    /\(\s*([^)]*)\s*\)\s*=>/, // (params) =>
+    /(\w+)\s*=>/, // param =>
   ];
 
   for (const pattern of functionParamPatterns) {
     const paramMatch = cleanCode.match(pattern);
     if (paramMatch && paramMatch[1]) {
       // Split parameters and extract names
-      const params = paramMatch[1].split(',').map(p => {
-        // Handle destructuring and default parameters
-        const paramName = p.trim().split(/[\s={}[\]]/)[0].trim();
-        return paramName.replace(/^\.\.\./, ''); // Remove rest operator
-      }).filter(p => p && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(p));
+      const params = paramMatch[1]
+        .split(',')
+        .map((p) => {
+          // Handle destructuring and default parameters
+          const paramName = p
+            .trim()
+            .split(/[\s={}[\]]/)[0]
+            .trim();
+          return paramName.replace(/^\.\.\./, ''); // Remove rest operator
+        })
+        .filter((p) => p && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(p));
 
-      params.forEach(param => functionParams.add(param));
+      params.forEach((param) => functionParams.add(param));
     }
   }
 
   // Check for declared variables (const, let, var)
-  const declaredVariablePattern = /\b(?:const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/g;
+  const declaredVariablePattern =
+    /\b(?:const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/g;
   const declaredVariables = new Set<string>();
   let match: RegExpExecArray | null;
 
@@ -214,50 +230,70 @@ function analyzeFunctionCode(code: string): {
     const variable = match[1];
 
     // Skip keywords, built-ins, function parameters, and declared variables
-    if (!isKeywordOrBuiltIn(variable) &&
-        !functionParams.has(variable) &&
-        !declaredVariables.has(variable)) {
+    if (
+      !isKeywordOrBuiltIn(variable) &&
+      !functionParams.has(variable) &&
+      !declaredVariables.has(variable)
+    ) {
       usedVariables.add(variable);
     }
   }
 
   // Categorize variables by risk level
   const allowedVariables = new Set([
-    'type', 'testsRun', 'counterexample', 'shrinksPerformed',
-    'propertyName', 'assertionType', 'shrinkSteps',
-    'length', 'message', 'name', 'stack', 'code'
+    'type',
+    'testsRun',
+    'counterexample',
+    'shrinksPerformed',
+    'propertyName',
+    'assertionType',
+    'shrinkSteps',
+    'length',
+    'message',
+    'name',
+    'stack',
+    'code',
   ]);
 
   const commonTestPatterns = new Set([
-    'resolve', 'reject', // Promise patterns
-    'setTimeout', 'clearTimeout', // Timing functions
-    'expect', 'assert' // Test framework functions
+    'resolve',
+    'reject', // Promise patterns
+    'setTimeout',
+    'clearTimeout', // Timing functions
+    'expect',
+    'assert', // Test framework functions
   ]);
 
-
-  const testPatternVariables = Array.from(usedVariables).filter(variable =>
+  const testPatternVariables = Array.from(usedVariables).filter((variable) =>
     commonTestPatterns.has(variable)
   );
 
-  const suspiciousVariables = Array.from(usedVariables).filter(variable =>
-    !allowedVariables.has(variable) && !commonTestPatterns.has(variable)
+  const suspiciousVariables = Array.from(usedVariables).filter(
+    (variable) =>
+      !allowedVariables.has(variable) && !commonTestPatterns.has(variable)
   );
 
   // Add warnings for test patterns (informational)
   if (testPatternVariables.length > 0) {
-    warnings.push(`Common test patterns detected: ${testPatternVariables.join(', ')} - these may work but reduce isolation`);
+    warnings.push(
+      `Common test patterns detected: ${testPatternVariables.join(', ')} - these may work but reduce isolation`
+    );
   }
 
   // Flag functions with closure variables that won't be available in workers
   if (suspiciousVariables.length > 0) {
     hasPotentialClosures = true;
     dependencies.push(...suspiciousVariables);
-    warnings.push(`Potential closure variables detected: ${suspiciousVariables.join(', ')}`);
+    warnings.push(
+      `Potential closure variables detected: ${suspiciousVariables.join(', ')}`
+    );
   }
 
   // Warn about arrow functions that rely on lexical 'this' binding
   if (cleanCode.includes('this.') && !cleanCode.includes('function(')) {
-    warnings.push('Arrow function with "this" usage - context may be lost in worker');
+    warnings.push(
+      'Arrow function with "this" usage - context may be lost in worker'
+    );
   }
 
   // Function is safe if it has no closures that will cause runtime errors
@@ -295,30 +331,132 @@ function removeCommentsAndStrings(code: string): string {
 function isKeywordOrBuiltIn(name: string): boolean {
   const keywords = new Set([
     // JavaScript keywords
-    'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
-    'delete', 'do', 'else', 'export', 'extends', 'finally', 'for', 'function',
-    'if', 'import', 'in', 'instanceof', 'new', 'return', 'super', 'switch',
-    'this', 'throw', 'try', 'typeof', 'var', 'void', 'while', 'with', 'yield',
-    'let', 'static', 'enum', 'implements', 'package', 'protected', 'interface',
-    'private', 'public', 'await', 'async',
+    'break',
+    'case',
+    'catch',
+    'class',
+    'const',
+    'continue',
+    'debugger',
+    'default',
+    'delete',
+    'do',
+    'else',
+    'export',
+    'extends',
+    'finally',
+    'for',
+    'function',
+    'if',
+    'import',
+    'in',
+    'instanceof',
+    'new',
+    'return',
+    'super',
+    'switch',
+    'this',
+    'throw',
+    'try',
+    'typeof',
+    'var',
+    'void',
+    'while',
+    'with',
+    'yield',
+    'let',
+    'static',
+    'enum',
+    'implements',
+    'package',
+    'protected',
+    'interface',
+    'private',
+    'public',
+    'await',
+    'async',
 
     // Built-in objects and functions
-    'Array', 'Object', 'String', 'Number', 'Boolean', 'Date', 'RegExp', 'Error',
-    'Math', 'JSON', 'console', 'setTimeout', 'setInterval', 'clearTimeout',
-    'clearInterval', 'isNaN', 'isFinite', 'parseInt', 'parseFloat', 'encodeURI',
-    'encodeURIComponent', 'decodeURI', 'decodeURIComponent', 'escape', 'unescape',
-    'eval', 'Promise', 'Symbol', 'Map', 'Set', 'WeakMap', 'WeakSet', 'Proxy',
-    'Reflect', 'ArrayBuffer', 'DataView', 'Int8Array', 'Uint8Array',
-    'Uint8ClampedArray', 'Int16Array', 'Uint16Array', 'Int32Array', 'Uint32Array',
-    'Float32Array', 'Float64Array', 'BigInt', 'BigInt64Array', 'BigUint64Array',
+    'Array',
+    'Object',
+    'String',
+    'Number',
+    'Boolean',
+    'Date',
+    'RegExp',
+    'Error',
+    'Math',
+    'JSON',
+    'console',
+    'setTimeout',
+    'setInterval',
+    'clearTimeout',
+    'clearInterval',
+    'isNaN',
+    'isFinite',
+    'parseInt',
+    'parseFloat',
+    'encodeURI',
+    'encodeURIComponent',
+    'decodeURI',
+    'decodeURIComponent',
+    'escape',
+    'unescape',
+    'eval',
+    'Promise',
+    'Symbol',
+    'Map',
+    'Set',
+    'WeakMap',
+    'WeakSet',
+    'Proxy',
+    'Reflect',
+    'ArrayBuffer',
+    'DataView',
+    'Int8Array',
+    'Uint8Array',
+    'Uint8ClampedArray',
+    'Int16Array',
+    'Uint16Array',
+    'Int32Array',
+    'Uint32Array',
+    'Float32Array',
+    'Float64Array',
+    'BigInt',
+    'BigInt64Array',
+    'BigUint64Array',
 
     // Common parameter names and literals
-    'undefined', 'null', 'true', 'false', 'NaN', 'Infinity',
+    'undefined',
+    'null',
+    'true',
+    'false',
+    'NaN',
+    'Infinity',
 
     // Common parameter patterns
-    'input', 'value', 'result', 'data', 'item', 'index', 'length', 'i', 'j', 'k',
-    'args', 'arguments', 'callback', 'cb', 'fn', 'func', 'error', 'err', 'res',
-    'req', 'response', 'request'
+    'input',
+    'value',
+    'result',
+    'data',
+    'item',
+    'index',
+    'length',
+    'i',
+    'j',
+    'k',
+    'args',
+    'arguments',
+    'callback',
+    'cb',
+    'fn',
+    'func',
+    'error',
+    'err',
+    'res',
+    'req',
+    'response',
+    'request',
   ]);
 
   return keywords.has(name);
@@ -344,7 +482,7 @@ export function createWorkerSafeFunction<TInput, TResult>(
     const warningsText = serialized.warnings.join(', ');
     throw new Error(
       `Function is not safe for worker execution: ${warningsText}. ` +
-      `Set allowUnsafe: true to proceed anyway.`
+        `Set allowUnsafe: true to proceed anyway.`
     );
   }
 
@@ -364,7 +502,9 @@ export function createWorkerSafeFunction<TInput, TResult>(
 
   return {
     code: wrapperCode.trim(),
-    name: serialized.name ? `${serialized.name}_workerSafe` : 'workerSafeWrapper',
+    name: serialized.name
+      ? `${serialized.name}_workerSafe`
+      : 'workerSafeWrapper',
     dependencies: serialized.dependencies,
     hasPotentialClosures: serialized.hasPotentialClosures,
     warnings: serialized.warnings,
@@ -398,9 +538,10 @@ export function validateWorkerFunction(fn: Function): {
 
     // Check for critical issues
     if (serialized.hasPotentialClosures) {
-      errors.push('Function contains potential closures that may not work in worker context');
+      errors.push(
+        'Function contains potential closures that may not work in worker context'
+      );
     }
-
   } catch (error) {
     errors.push(`Function validation failed: ${error}`);
   }

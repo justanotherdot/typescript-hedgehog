@@ -5,13 +5,21 @@
  * error handling, and compatibility across different browser environments.
  */
 
-import { createWorkerSafeFunction, type SerializedFunction } from './function-serializer.js';
+import {
+  createWorkerSafeFunction,
+  type SerializedFunction,
+} from './function-serializer.js';
 
 /**
  * Message types for Web Worker communication.
  */
 type WorkerMessage =
-  | { type: 'execute-test'; testId: string; input: unknown; serializedFunction: SerializedFunction }
+  | {
+      type: 'execute-test';
+      testId: string;
+      input: unknown;
+      serializedFunction: SerializedFunction;
+    }
   | { type: 'ping' }
   | { type: 'terminate' }
   | { type: 'health-check'; healthCheckId?: string };
@@ -137,22 +145,28 @@ export class WebWorkerInstance {
   private readonly config: WebWorkerConfig;
   private readonly workerId: string;
   private readonly createdAt: number;
-  private readonly pendingTests = new Map<string, {
-    resolve: (result: WebWorkerTestResult) => void;
-    reject: (error: Error) => void;
-    timeoutId: ReturnType<typeof setTimeout>;
-  }>();
+  private readonly pendingTests = new Map<
+    string,
+    {
+      resolve: (result: WebWorkerTestResult) => void;
+      reject: (error: Error) => void;
+      timeoutId: ReturnType<typeof setTimeout>;
+    }
+  >();
 
   private isHealthy = true;
   private isReady = false;
   private lastHealthCheck = 0;
   private lastError?: string;
   private isTerminating = false;
-  private pendingHealthChecks = new Map<string, {
-    resolve: (status: HealthStatus) => void;
-    reject: (error: Error) => void;
-    timeoutId: ReturnType<typeof setTimeout>;
-  }>();
+  private pendingHealthChecks = new Map<
+    string,
+    {
+      resolve: (status: HealthStatus) => void;
+      reject: (error: Error) => void;
+      timeoutId: ReturnType<typeof setTimeout>;
+    }
+  >();
 
   constructor(workerId: string, config: WebWorkerConfig) {
     this.workerId = workerId;
@@ -173,7 +187,11 @@ export class WebWorkerInstance {
 
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
-        reject(new Error(`Worker ${this.workerId} did not become ready within ${timeoutMs}ms`));
+        reject(
+          new Error(
+            `Worker ${this.workerId} did not become ready within ${timeoutMs}ms`
+          )
+        );
       }, timeoutMs);
 
       const checkReady = () => {
@@ -201,7 +219,9 @@ export class WebWorkerInstance {
     }
 
     if (this.isTerminating) {
-      throw new Error(`Worker ${this.workerId} is terminating and cannot accept new tests`);
+      throw new Error(
+        `Worker ${this.workerId} is terminating and cannot accept new tests`
+      );
     }
 
     if (!this.isReady) {
@@ -219,15 +239,27 @@ export class WebWorkerInstance {
         // Set up timeout
         const timeoutId = setTimeout(() => {
           this.pendingTests.delete(testId);
-          this.markUnhealthy(`Test ${testId} timed out after ${this.config.testTimeout}ms`);
-          reject(new Error(`Test ${testId} timed out after ${this.config.testTimeout}ms`));
+          this.markUnhealthy(
+            `Test ${testId} timed out after ${this.config.testTimeout}ms`
+          );
+          reject(
+            new Error(
+              `Test ${testId} timed out after ${this.config.testTimeout}ms`
+            )
+          );
         }, this.config.testTimeout);
 
         // Check resource limits before registering test
         if (this.pendingTests.size >= 1000) {
           clearTimeout(timeoutId);
-          this.markUnhealthy(`Worker ${this.workerId} has too many pending tests (${this.pendingTests.size})`);
-          reject(new Error(`Worker ${this.workerId} has too many pending tests (${this.pendingTests.size})`));
+          this.markUnhealthy(
+            `Worker ${this.workerId} has too many pending tests (${this.pendingTests.size})`
+          );
+          reject(
+            new Error(
+              `Worker ${this.workerId} has too many pending tests (${this.pendingTests.size})`
+            )
+          );
           return;
         }
 
@@ -242,9 +274,10 @@ export class WebWorkerInstance {
           serializedFunction,
         } satisfies WorkerMessage);
       });
-
     } catch (error) {
-      throw new Error(`Failed to execute test on worker ${this.workerId}: ${error}`);
+      throw new Error(
+        `Failed to execute test on worker ${this.workerId}: ${error}`
+      );
     }
   }
 
@@ -271,12 +304,16 @@ export class WebWorkerInstance {
       }, this.config.healthCheckTimeout);
 
       // Register pending health check
-      this.pendingHealthChecks.set(healthCheckId, { resolve, reject, timeoutId });
+      this.pendingHealthChecks.set(healthCheckId, {
+        resolve,
+        reject,
+        timeoutId,
+      });
 
       // Send health check request
       this.worker.postMessage({
         type: 'health-check',
-        healthCheckId
+        healthCheckId,
       } satisfies WorkerMessage);
     });
   }
@@ -289,7 +326,7 @@ export class WebWorkerInstance {
       return false;
     }
 
-    return new Promise<boolean>(resolve => {
+    return new Promise<boolean>((resolve) => {
       const timeoutId = setTimeout(() => {
         this.markUnhealthy('Ping timed out');
         resolve(false);
@@ -324,9 +361,14 @@ export class WebWorkerInstance {
     this.pendingTests.clear();
 
     // Cancel all pending health checks
-    for (const [healthCheckId, { reject, timeoutId }] of this.pendingHealthChecks) {
+    for (const [healthCheckId, { reject, timeoutId }] of this
+      .pendingHealthChecks) {
       clearTimeout(timeoutId);
-      reject(new Error(`Health check ${healthCheckId} cancelled due to worker termination`));
+      reject(
+        new Error(
+          `Health check ${healthCheckId} cancelled due to worker termination`
+        )
+      );
     }
     this.pendingHealthChecks.clear();
 
@@ -575,7 +617,10 @@ export class WebWorkerInstance {
         } catch (validationError) {
           this.markUnhealthy(`Invalid message from worker: ${validationError}`);
           if (this.config.enableLogging) {
-            console.error(`Worker ${this.workerId} sent invalid message:`, validationError);
+            console.error(
+              `Worker ${this.workerId} sent invalid message:`,
+              validationError
+            );
           }
           return;
         }
@@ -610,20 +655,28 @@ export class WebWorkerInstance {
               this.lastHealthCheck = performance.now();
               pending.resolve(response.status);
             } else if (this.config.enableLogging) {
-              console.warn(`Received health-status response with unknown or missing ID: ${healthCheckId}`);
+              console.warn(
+                `Received health-status response with unknown or missing ID: ${healthCheckId}`
+              );
             }
             break;
           }
 
           default:
             if (this.config.enableLogging) {
-              console.warn(`Unknown response type from worker ${this.workerId}:`, (response as any).type);
+              console.warn(
+                `Unknown response type from worker ${this.workerId}:`,
+                (response as any).type
+              );
             }
         }
       } catch (error) {
         this.markUnhealthy(`Error handling message: ${error}`);
         if (this.config.enableLogging) {
-          console.error(`Error handling message from worker ${this.workerId}:`, error);
+          console.error(
+            `Error handling message from worker ${this.workerId}:`,
+            error
+          );
         }
       }
     });
@@ -651,7 +704,11 @@ export class WebWorkerInstance {
   /**
    * Handle successful test result.
    */
-  private handleTestResult(response: { testId: string; result: TestResult; timing: number }): void {
+  private handleTestResult(response: {
+    testId: string;
+    result: TestResult;
+    timing: number;
+  }): void {
     const pending = this.pendingTests.get(response.testId);
     if (pending) {
       clearTimeout(pending.timeoutId);
@@ -669,7 +726,11 @@ export class WebWorkerInstance {
   /**
    * Handle test error.
    */
-  private handleTestError(response: { testId: string; error: string; timing: number }): void {
+  private handleTestError(response: {
+    testId: string;
+    error: string;
+    timing: number;
+  }): void {
     const pending = this.pendingTests.get(response.testId);
     if (pending) {
       clearTimeout(pending.timeoutId);
