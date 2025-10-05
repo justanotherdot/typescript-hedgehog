@@ -14,7 +14,7 @@ export {
   DateOptions,
   ArrayOptions,
 } from './gen.js';
-export { Property, forAll } from './property.js';
+export { Property, forAll, forAllNamed } from './property.js';
 export { Config } from './config.js';
 export {
   TestResult,

@@ -47,15 +47,20 @@ export class Seed implements BulkSeed {
   }
 
   nextBounded(bound: number): [number, Seed] {
-    if (bound === undefined || bound === null || !Number.isFinite(bound) || bound < 0) {
+    if (
+      bound === undefined ||
+      bound === null ||
+      !Number.isFinite(bound) ||
+      bound < 0
+    ) {
       throw new Error(
         `Invalid bound parameter: ${bound}. ` +
-        'This often indicates an API usage error. ' +
-        'Common causes:\n' +
-        '  - Using Gen.string(Range.uniform(min, max)) - Gen.string() takes no parameters\n' +
-        '  - Passing undefined/null values to generators\n' +
-        '  - Using negative bounds\n' +
-        'For variable-length strings, use: Gen.int(Range.uniform(min, max)).bind(len => Gen.stringOfLength(len))'
+          'This often indicates an API usage error. ' +
+          'Common causes:\n' +
+          '  - Using Gen.string(Range.uniform(min, max)) - Gen.string() takes no parameters\n' +
+          '  - Passing undefined/null values to generators\n' +
+          '  - Using negative bounds\n' +
+          'For variable-length strings, use: Gen.int(Range.uniform(min, max)).bind(len => Gen.stringOfLength(len))'
       );
     }
     const result = this.wasmSeed.next_bounded(BigInt(bound));

@@ -92,21 +92,21 @@ if (parentPort) {
     // Check for common container indicators
     const indicators = {
       'Container env vars': {
-        'CI': process.env.CI,
-        'GITHUB_ACTIONS': process.env.GITHUB_ACTIONS,
-        'RUNNER_OS': process.env.RUNNER_OS,
-        'CONTAINER': process.env.CONTAINER,
+        CI: process.env.CI,
+        GITHUB_ACTIONS: process.env.GITHUB_ACTIONS,
+        RUNNER_OS: process.env.RUNNER_OS,
+        CONTAINER: process.env.CONTAINER,
       },
       'Process info': {
-        'PID': process.pid,
-        'PPID': process.ppid,
-        'UID': process.getuid?.(),
-        'GID': process.getgid?.(),
+        PID: process.pid,
+        PPID: process.ppid,
+        UID: process.getuid?.(),
+        GID: process.getgid?.(),
       },
       'Resource limits': {
         'Memory usage': process.memoryUsage(),
         'CPU usage': process.cpuUsage(),
-      }
+      },
     };
 
     console.log('Environment indicators:', JSON.stringify(indicators, null, 2));
@@ -117,7 +117,10 @@ if (parentPort) {
       const cgroup = fs.readFileSync('/proc/1/cgroup', 'utf8');
       console.log('Container cgroup info:', cgroup);
     } catch (error) {
-      console.log('Could not read cgroup info (not Linux or no access):', error.message);
+      console.log(
+        'Could not read cgroup info (not Linux or no access):',
+        error.message
+      );
     }
 
     expect(true).toBe(true); // Always pass, this is just for logging
@@ -173,7 +176,9 @@ if (parentPort) {
           }
         });
 
-        console.log('ES module worker event listeners set up, waiting for message...');
+        console.log(
+          'ES module worker event listeners set up, waiting for message...'
+        );
       });
 
       await worker.terminate();
@@ -181,7 +186,10 @@ if (parentPort) {
 
       expect(result).toEqual({ type: 'ready', module: 'es' });
     } catch (error) {
-      console.log('ES module worker failed (this might be expected):', error.message);
+      console.log(
+        'ES module worker failed (this might be expected):',
+        error.message
+      );
       // Don't fail the test - ES modules might not be supported
       expect(true).toBe(true);
     } finally {

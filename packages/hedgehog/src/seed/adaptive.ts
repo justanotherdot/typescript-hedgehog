@@ -157,14 +157,19 @@ export class AdaptiveSeed implements BulkSeed {
   }
 
   nextBounded(bound: number): [number, AdaptiveSeed] {
-    if (bound === undefined || bound === null || !Number.isFinite(bound) || bound < 0) {
+    if (
+      bound === undefined ||
+      bound === null ||
+      !Number.isFinite(bound) ||
+      bound < 0
+    ) {
       throw new Error(
         `Invalid bound parameter: ${bound}. ` +
-        'This often indicates an API usage error. ' +
-        'Common causes:\n' +
-        '  - Using Gen.string(Range.uniform(min, max)) - use Gen.stringBetween(min, max) instead\n' +
-        '  - Passing undefined/null values to generators\n' +
-        '  - Using negative bounds'
+          'This often indicates an API usage error. ' +
+          'Common causes:\n' +
+          '  - Using Gen.string(Range.uniform(min, max)) - use Gen.stringBetween(min, max) instead\n' +
+          '  - Passing undefined/null values to generators\n' +
+          '  - Using negative bounds'
       );
     }
 

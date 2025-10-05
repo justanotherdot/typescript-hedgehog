@@ -84,7 +84,10 @@ export class ConcurrentProperty<T> {
     let raceConditionTests = 0;
 
     for (let i = 0; i < testConfig.testLimit; i++) {
-      const input = this.generator.generate(Size.of(i), Seed.fromNumber(i * 1000)).value;
+      const input = this.generator.generate(
+        Size.of(i),
+        Seed.fromNumber(i * 1000)
+      ).value;
 
       // Run the same test multiple times concurrently
       const promises = Array.from({ length: this.config.workerCount }, () =>
@@ -96,8 +99,8 @@ export class ConcurrentProperty<T> {
 
         // Check if all results are the same (deterministic)
         const firstResult = results[0];
-        const consistent = results.every(result =>
-          JSON.stringify(result) === JSON.stringify(firstResult)
+        const consistent = results.every(
+          (result) => JSON.stringify(result) === JSON.stringify(firstResult)
         );
 
         testResults.push({
@@ -123,7 +126,8 @@ export class ConcurrentProperty<T> {
     }
 
     const totalTests = testConfig.testLimit;
-    const determinismRate = totalTests > 0 ? deterministicTests / totalTests : 1;
+    const determinismRate =
+      totalTests > 0 ? deterministicTests / totalTests : 1;
 
     return {
       summary: {
@@ -179,11 +183,15 @@ export async function detectRaceConditions<T>(
   return {
     determinismRate: result.summary.determinismRate,
     hasRaceConditions: result.summary.raceConditionTests > 0,
-    patterns: result.summary.raceConditionTests > 0 ? [
-      {
-        description: 'Non-deterministic behavior detected',
-        frequency: result.summary.raceConditionTests / result.summary.totalTests,
-      }
-    ] : [],
+    patterns:
+      result.summary.raceConditionTests > 0
+        ? [
+            {
+              description: 'Non-deterministic behavior detected',
+              frequency:
+                result.summary.raceConditionTests / result.summary.totalTests,
+            },
+          ]
+        : [],
   };
 }

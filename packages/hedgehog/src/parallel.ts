@@ -148,7 +148,7 @@ export class ParallelProperty<T> {
     /** Parallel execution configuration */
     public readonly config: ParallelConfig,
     /** Variable name for debugging */
-    public readonly variableName?: string,
+    public readonly variableName?: string
   ) {}
 
   /**
@@ -159,7 +159,7 @@ export class ParallelProperty<T> {
       this.generator,
       this.testFunction,
       this.config,
-      name,
+      name
     );
   }
 
@@ -181,12 +181,18 @@ export class ParallelProperty<T> {
       const workDistribution = this.distributeWork(testInputs);
 
       // Execute tests in parallel
-      const workerResults = await this.executeWorkersInParallel(workerPool, workDistribution);
+      const workerResults = await this.executeWorkersInParallel(
+        workerPool,
+        workDistribution
+      );
 
       // Analyze results and compute metrics
       const totalDuration = performance.now() - startTime;
       const outcome = this.aggregateResults(workerResults);
-      const performanceMetrics = this.calculatePerformanceMetrics(totalDuration, workerResults);
+      const performanceMetrics = this.calculatePerformanceMetrics(
+        totalDuration,
+        workerResults
+      );
       const issues = this.analyzeExecutionIssues(workerResults);
 
       return {
@@ -225,7 +231,10 @@ export class ParallelProperty<T> {
 
     switch (this.config.workDistribution) {
       case 'round-robin': {
-        const workerInputs: T[][] = Array.from({ length: workerCount }, () => []);
+        const workerInputs: T[][] = Array.from(
+          { length: workerCount },
+          () => []
+        );
 
         for (let i = 0; i < totalTests; i++) {
           const workerIndex = i % workerCount;
@@ -255,7 +264,9 @@ export class ParallelProperty<T> {
       }
 
       default:
-        throw new Error(`Unknown work distribution strategy: ${this.config.workDistribution}`);
+        throw new Error(
+          `Unknown work distribution strategy: ${this.config.workDistribution}`
+        );
     }
   }
 
@@ -310,14 +321,17 @@ export class ParallelProperty<T> {
             return {
               workerId,
               result: failureResult,
-              timing: this.calculateWorkerTiming(startTime, testsRun + 1, totalTestTime),
+              timing: this.calculateWorkerTiming(
+                startTime,
+                testsRun + 1,
+                totalTestTime
+              ),
               errors: [...errors, 'Property test failed'],
             };
           }
 
           testsRun++;
           totalTestTime += performance.now() - testStartTime;
-
         } catch (error) {
           errors.push(`Test execution error: ${error}`);
 
@@ -334,7 +348,11 @@ export class ParallelProperty<T> {
           return {
             workerId,
             result: errorResult,
-            timing: this.calculateWorkerTiming(startTime, testsRun + 1, totalTestTime),
+            timing: this.calculateWorkerTiming(
+              startTime,
+              testsRun + 1,
+              totalTestTime
+            ),
             errors,
           };
         }
@@ -353,7 +371,6 @@ export class ParallelProperty<T> {
         timing: this.calculateWorkerTiming(startTime, testsRun, totalTestTime),
         errors,
       };
-
     } catch (error) {
       errors.push(`Worker execution error: ${error}`);
 
@@ -376,7 +393,6 @@ export class ParallelProperty<T> {
     }
   }
 
-
   /**
    * Calculate timing information for a worker.
    */
@@ -386,7 +402,8 @@ export class ParallelProperty<T> {
     totalTestTime: number
   ): WorkerTimingInfo {
     const totalTime = performance.now() - startTime;
-    const averageTimePerTest = testsExecuted > 0 ? totalTestTime / testsExecuted : 0;
+    const averageTimePerTest =
+      testsExecuted > 0 ? totalTestTime / testsExecuted : 0;
     const idleTime = Math.max(0, totalTime - totalTestTime);
 
     return {
@@ -400,7 +417,9 @@ export class ParallelProperty<T> {
   /**
    * Aggregate results from all workers into a single result.
    */
-  private aggregateResults(workerResults: WorkerExecutionResult[]): ParallelTestResultType {
+  private aggregateResults(
+    workerResults: WorkerExecutionResult[]
+  ): ParallelTestResultType {
     // If any worker failed, the overall test failed
     for (const workerResult of workerResults) {
       if (workerResult.result.type === 'fail') {
@@ -410,7 +429,10 @@ export class ParallelProperty<T> {
 
     // All workers passed - aggregate the success
     const totalTests = workerResults.reduce((sum, workerResult) => {
-      return sum + (workerResult.result.type === 'pass' ? workerResult.result.testsRun : 0);
+      return (
+        sum +
+        (workerResult.result.type === 'pass' ? workerResult.result.testsRun : 0)
+      );
     }, 0);
 
     return {
@@ -436,14 +458,17 @@ export class ParallelProperty<T> {
     }, 0);
 
     // Estimate what sequential execution would have taken
-    const averageTestTime = workerResults.reduce((sum, result) => {
-      return sum + result.timing.averageTimePerTest;
-    }, 0) / workerResults.length;
+    const averageTestTime =
+      workerResults.reduce((sum, result) => {
+        return sum + result.timing.averageTimePerTest;
+      }, 0) / workerResults.length;
 
     const estimatedSequentialTime = totalTests * averageTestTime;
-    const speedupFactor = estimatedSequentialTime > 0 ? estimatedSequentialTime / totalDuration : 1;
+    const speedupFactor =
+      estimatedSequentialTime > 0 ? estimatedSequentialTime / totalDuration : 1;
     const workerEfficiency = speedupFactor / this.config.workerCount;
-    const testsPerSecond = totalDuration > 0 ? (totalTests * 1000) / totalDuration : 0;
+    const testsPerSecond =
+      totalDuration > 0 ? (totalTests * 1000) / totalDuration : 0;
 
     return {
       totalDuration,
@@ -457,7 +482,9 @@ export class ParallelProperty<T> {
   /**
    * Analyze worker results for execution issues.
    */
-  private analyzeExecutionIssues(workerResults: WorkerExecutionResult[]): ParallelExecutionIssues {
+  private analyzeExecutionIssues(
+    workerResults: WorkerExecutionResult[]
+  ): ParallelExecutionIssues {
     const workerFailures: string[] = [];
     const timeouts: string[] = [];
     const loadBalancingIssues: string[] = [];
@@ -471,7 +498,7 @@ export class ParallelProperty<T> {
     }
 
     // Analyze load balancing
-    const testCounts = workerResults.map(r => r.timing.testsExecuted);
+    const testCounts = workerResults.map((r) => r.timing.testsExecuted);
     const maxTests = Math.max(...testCounts);
     const minTests = Math.min(...testCounts);
     const imbalanceRatio = maxTests > 0 ? minTests / maxTests : 1;
@@ -483,9 +510,18 @@ export class ParallelProperty<T> {
     }
 
     // Analyze timing efficiency
-    const totalIdleTime = workerResults.reduce((sum, r) => sum + r.timing.idleTime, 0);
-    const totalActiveTime = workerResults.reduce((sum, r) => sum + r.timing.totalTime - r.timing.idleTime, 0);
-    const idlePercentage = totalActiveTime > 0 ? (totalIdleTime / (totalIdleTime + totalActiveTime)) * 100 : 0;
+    const totalIdleTime = workerResults.reduce(
+      (sum, r) => sum + r.timing.idleTime,
+      0
+    );
+    const totalActiveTime = workerResults.reduce(
+      (sum, r) => sum + r.timing.totalTime - r.timing.idleTime,
+      0
+    );
+    const idlePercentage =
+      totalActiveTime > 0
+        ? (totalIdleTime / (totalIdleTime + totalActiveTime)) * 100
+        : 0;
 
     if (idlePercentage > 20) {
       resourceWarnings.push(
@@ -504,7 +540,10 @@ export class ParallelProperty<T> {
   /**
    * Create error result for parallel execution failure.
    */
-  private createErrorResult(error: unknown, duration: number): ParallelTestResult {
+  private createErrorResult(
+    error: unknown,
+    duration: number
+  ): ParallelTestResult {
     const failureResult: ParallelTestResultType = {
       type: 'fail',
       counterexample: `Parallel execution error: ${error}`,
@@ -553,7 +592,7 @@ export class ParallelProperty<T> {
 export function forAllParallel<T>(
   generator: Gen<T>,
   condition: (input: T) => boolean | Promise<boolean>,
-  workerCount: number = defaultParallelConfig().workerCount,
+  workerCount: number = defaultParallelConfig().workerCount
 ): ParallelProperty<T> {
   const config: ParallelConfig = {
     ...defaultParallelConfig(),
@@ -572,7 +611,7 @@ export function forAllParallel<T>(
 export function parallelProperty<T>(
   generator: Gen<T>,
   condition: (input: T) => boolean | Promise<boolean>,
-  config: ParallelConfig = defaultParallelConfig(),
+  config: ParallelConfig = defaultParallelConfig()
 ): ParallelProperty<T> {
   return new ParallelProperty(generator, condition, config);
 }
@@ -585,8 +624,10 @@ export function parallelProperty<T>(
  */
 export function parallelPropertyWithResult<T>(
   generator: Gen<T>,
-  testFunction: (input: T) => ParallelTestResultType | Promise<ParallelTestResultType>,
-  config: ParallelConfig = defaultParallelConfig(),
+  testFunction: (
+    input: T
+  ) => ParallelTestResultType | Promise<ParallelTestResultType>,
+  config: ParallelConfig = defaultParallelConfig()
 ): ParallelProperty<T> {
   // Convert TestResult-returning function to boolean-returning function
   const booleanFunction = async (input: T): Promise<boolean> => {

@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Environment, type Variable } from '../state.js';
-import { command, require, update, ensure, executeSequential, newVar } from '../state.js';
+import {
+  command,
+  require,
+  update,
+  ensure,
+  executeSequential,
+  newVar,
+} from '../state.js';
 import { Gen } from '../gen.js';
 import { Range } from '../data/size.js';
 
@@ -93,9 +100,21 @@ describe('State Machine Internals', () => {
         type: 'sequential' as const,
         initialState: { items: [] },
         actions: [
-          { command: addItem, input: { value: 'item-1' }, output: newVar<string>() },
-          { command: addItem, input: { value: 'item-1' }, output: newVar<string>() },
-          { command: addItem, input: { value: 'item-1' }, output: newVar<string>() },
+          {
+            command: addItem,
+            input: { value: 'item-1' },
+            output: newVar<string>(),
+          },
+          {
+            command: addItem,
+            input: { value: 'item-1' },
+            output: newVar<string>(),
+          },
+          {
+            command: addItem,
+            input: { value: 'item-1' },
+            output: newVar<string>(),
+          },
         ],
       };
 
@@ -120,13 +139,18 @@ describe('State Machine Internals', () => {
         },
         require(() => true),
         update((state, input, outputVar) => {
-          const userId = outputVar.type === 'symbolic' ? outputVar.toString() : outputVar.value;
+          const userId =
+            outputVar.type === 'symbolic'
+              ? outputVar.toString()
+              : outputVar.value;
           return {
             users: { ...state.users, [userId]: outputVar },
           };
         }),
         ensure((_before, after, _input, _output) => {
-          return Object.keys(after.users).length === Object.keys(realUsers).length;
+          return (
+            Object.keys(after.users).length === Object.keys(realUsers).length
+          );
         })
       );
 
@@ -134,8 +158,16 @@ describe('State Machine Internals', () => {
         type: 'sequential' as const,
         initialState: { users: {} },
         actions: [
-          { command: createUser, input: { name: 'Alice' }, output: newVar<string>() },
-          { command: createUser, input: { name: 'Bob' }, output: newVar<string>() },
+          {
+            command: createUser,
+            input: { name: 'Alice' },
+            output: newVar<string>(),
+          },
+          {
+            command: createUser,
+            input: { name: 'Bob' },
+            output: newVar<string>(),
+          },
         ],
       };
 
@@ -172,9 +204,21 @@ describe('State Machine Internals', () => {
         type: 'sequential' as const,
         initialState: { items: [] },
         actions: [
-          { command: addItem, input: { id: 'duplicate-id' }, output: newVar<string>() },
-          { command: addItem, input: { id: 'duplicate-id' }, output: newVar<string>() },
-          { command: addItem, input: { id: 'duplicate-id' }, output: newVar<string>() },
+          {
+            command: addItem,
+            input: { id: 'duplicate-id' },
+            output: newVar<string>(),
+          },
+          {
+            command: addItem,
+            input: { id: 'duplicate-id' },
+            output: newVar<string>(),
+          },
+          {
+            command: addItem,
+            input: { id: 'duplicate-id' },
+            output: newVar<string>(),
+          },
         ],
       };
 
@@ -190,7 +234,11 @@ describe('State Machine Internals', () => {
 
       const realTeams = new Map<string, { members: string[] }>();
 
-      const addMember = command<State, { teamId: string; name: string }, string>(
+      const addMember = command<
+        State,
+        { teamId: string; name: string },
+        string
+      >(
         (_state) =>
           Gen.object({
             teamId: Gen.constant('team-1'),

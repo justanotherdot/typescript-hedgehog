@@ -41,8 +41,8 @@ type ResolvedInput<T> = {
   [K in keyof T]: T[K] extends Variable<infer U>
     ? U
     : T[K] extends object
-    ? ResolvedInput<T[K]>
-    : T[K];
+      ? ResolvedInput<T[K]>
+      : T[K];
 };
 
 // Variable system for symbolic/concrete duality
@@ -108,9 +108,10 @@ export class Environment {
   // Enables value-based equality via reference equality for Map keys
   // Critical for Map<Variable, Data> to match SUT behavior with duplicate values
   createConcrete<T>(value: T): Concrete<T> {
-    const cacheKey = typeof value === 'object' && value !== null
-      ? JSON.stringify(value)
-      : value;
+    const cacheKey =
+      typeof value === 'object' && value !== null
+        ? JSON.stringify(value)
+        : value;
 
     if (this.concreteCache.has(cacheKey)) {
       return this.concreteCache.get(cacheKey)!;
@@ -148,10 +149,12 @@ export class Environment {
 
 // Helper to check if a value is a Variable
 function isVariable(value: any): value is Variable<any> {
-  return value != null &&
-         typeof value === 'object' &&
-         ('type' in value) &&
-         (value.type === 'symbolic' || value.type === 'concrete');
+  return (
+    value != null &&
+    typeof value === 'object' &&
+    'type' in value &&
+    (value.type === 'symbolic' || value.type === 'concrete')
+  );
 }
 
 // Callback types for command specification
@@ -399,7 +402,7 @@ function serializeForErrorMessage(obj: any, _indent = 0): string {
   }
 
   if (Array.isArray(obj)) {
-    return `[${obj.map(v => serializeForErrorMessage(v)).join(', ')}]`;
+    return `[${obj.map((v) => serializeForErrorMessage(v)).join(', ')}]`;
   }
 
   const props = Object.entries(obj)
@@ -419,17 +422,6 @@ function resolveState(state: any, environment: Environment): any {
       for (const [key, value] of state.entries()) {
         const resolvedKey = resolveInput(key, environment);
         const resolvedValue = resolveInput(value, environment);
-
-        // Warn if we're about to overwrite a key (collision detection)
-        if (resolved.has(resolvedKey)) {
-          console.warn(
-            `WARNING: Map key collision detected!\n` +
-            `  Symbolic key ${key} resolves to ${JSON.stringify(resolvedKey)}\n` +
-            `  This will overwrite existing entry with same key.\n` +
-            `  This usually means your executor is returning duplicate IDs.`
-          );
-        }
-
         resolved.set(resolvedKey, resolvedValue);
       }
       return resolved;
@@ -625,15 +617,24 @@ export function parallel<State>(
   return Gen.sized((size) => {
     const maxPrefixLength = Math.min(prefixRange.max, size.value);
     const minPrefixLength = Math.min(prefixRange.min, maxPrefixLength);
-    const prefixLengthGen = Gen.int(Range.uniform(minPrefixLength, maxPrefixLength));
+    const prefixLengthGen = Gen.int(
+      Range.uniform(minPrefixLength, maxPrefixLength)
+    );
 
     const maxBranchLength = Math.min(branchRange.max, size.value);
     const minBranchLength = Math.min(branchRange.min, maxBranchLength);
-    const branchLengthGen = Gen.int(Range.uniform(minBranchLength, maxBranchLength));
+    const branchLengthGen = Gen.int(
+      Range.uniform(minBranchLength, maxBranchLength)
+    );
 
     return prefixLengthGen.bind((prefixLength) =>
       branchLengthGen.bind((branchLength) =>
-        generateParallelSequence(prefixLength, branchLength, initialState, commands)
+        generateParallelSequence(
+          prefixLength,
+          branchLength,
+          initialState,
+          commands
+        )
       )
     );
   });
@@ -660,7 +661,9 @@ function generateParallelSequence<State>(
         break;
       }
 
-      const [commandIndex, seed1] = currentSeed.nextBounded(availableCommands.length);
+      const [commandIndex, seed1] = currentSeed.nextBounded(
+        availableCommands.length
+      );
       const command = availableCommands[commandIndex];
       const inputGen = command.generator(currentState);
 
@@ -694,8 +697,20 @@ function generateParallelSequence<State>(
 
     // Generate branch actions starting from the state after prefix
     const [branch1Seed, branch2Seed] = currentSeed.split();
-    const branch1Actions = generateBranchActions(branchLength, currentState, commands, size, branch1Seed);
-    const branch2Actions = generateBranchActions(branchLength, currentState, commands, size, branch2Seed);
+    const branch1Actions = generateBranchActions(
+      branchLength,
+      currentState,
+      commands,
+      size,
+      branch1Seed
+    );
+    const branch2Actions = generateBranchActions(
+      branchLength,
+      currentState,
+      commands,
+      size,
+      branch2Seed
+    );
 
     const result: Parallel<State> = {
       type: 'parallel',
@@ -728,7 +743,9 @@ function generateBranchActions<State>(
       break;
     }
 
-    const [commandIndex, seed1] = currentSeed.nextBounded(availableCommands.length);
+    const [commandIndex, seed1] = currentSeed.nextBounded(
+      availableCommands.length
+    );
     const command = availableCommands[commandIndex];
     const inputGen = command.generator(currentState);
 
@@ -805,7 +822,6 @@ interface ActionExecution<State> {
   readonly error?: string;
 }
 
-
 // Check linearizability: can concurrent execution be explained by some sequential order?
 // Try all interleavings of branch actions; if any satisfies pre/postconditions, test passes
 // Uses actual results from parallel execution (not re-executing)
@@ -815,8 +831,8 @@ async function linearize<State>(
   branch2Executions: ActionExecution<State>[]
 ): Promise<{ success: boolean; error?: string }> {
   // Extract actions from executions
-  const branch1Actions = branch1Executions.map(exec => exec.action);
-  const branch2Actions = branch2Executions.map(exec => exec.action);
+  const branch1Actions = branch1Executions.map((exec) => exec.action);
+  const branch2Actions = branch2Executions.map((exec) => exec.action);
 
   // Create a mapping of action outputs to their actual results
   const resultMapping = new Map<Symbolic<unknown>, Concrete<unknown>>();
@@ -873,7 +889,11 @@ async function linearize<State>(
         // Apply updates
         for (const callback of action.command.callbacks) {
           if (callback.type === 'update') {
-            currentState = callback.update(currentState, action.input, action.output);
+            currentState = callback.update(
+              currentState,
+              action.input,
+              action.output
+            );
           }
         }
 
@@ -883,8 +903,18 @@ async function linearize<State>(
 
         for (const callback of action.command.callbacks) {
           if (callback.type === 'ensure') {
-            const actualValue = actualResult?.type === 'concrete' ? actualResult.value : actualResult;
-            if (!callback.check(resolvedStateBefore, resolvedStateAfter, resolvedInput, actualValue)) {
+            const actualValue =
+              actualResult?.type === 'concrete'
+                ? actualResult.value
+                : actualResult;
+            if (
+              !callback.check(
+                resolvedStateBefore,
+                resolvedStateAfter,
+                resolvedInput,
+                actualValue
+              )
+            ) {
               interleavingValid = false;
               break;
             }
@@ -892,7 +922,6 @@ async function linearize<State>(
         }
 
         if (!interleavingValid) break;
-
       } catch (_error) {
         interleavingValid = false;
         break;
@@ -906,7 +935,7 @@ async function linearize<State>(
 
   return {
     success: false,
-    error: 'No valid interleaving found - linearization failed'
+    error: 'No valid interleaving found - linearization failed',
   };
 }
 
@@ -947,7 +976,11 @@ export async function executeParallel<State>(
       // Apply updates
       for (const callback of action.command.callbacks) {
         if (callback.type === 'update') {
-          currentState = callback.update(currentState, action.input, action.output);
+          currentState = callback.update(
+            currentState,
+            action.input,
+            action.output
+          );
         }
       }
 
@@ -957,7 +990,14 @@ export async function executeParallel<State>(
 
       for (const callback of action.command.callbacks) {
         if (callback.type === 'ensure') {
-          if (!callback.check(resolvedStateBefore, resolvedStateAfter, resolvedInput, result)) {
+          if (
+            !callback.check(
+              resolvedStateBefore,
+              resolvedStateAfter,
+              resolvedInput,
+              result
+            )
+          ) {
             return {
               success: false,
               failureDetails: `Prefix postcondition failed at action ${i}`,
@@ -1015,14 +1055,14 @@ export async function executeParallel<State>(
   ]);
 
   // Check if any branch failed
-  const branch1Failed = branch1Executions.some(exec => !exec.success);
-  const branch2Failed = branch2Executions.some(exec => !exec.success);
+  const branch1Failed = branch1Executions.some((exec) => !exec.success);
+  const branch2Failed = branch2Executions.some((exec) => !exec.success);
 
   if (branch1Failed || branch2Failed) {
     const failedBranch = branch1Failed ? 'branch1' : 'branch2';
-    const failedExecution = branch1Failed ?
-      branch1Executions.find(exec => !exec.success) :
-      branch2Executions.find(exec => !exec.success);
+    const failedExecution = branch1Failed
+      ? branch1Executions.find((exec) => !exec.success)
+      : branch2Executions.find((exec) => !exec.success);
 
     return {
       success: false,
@@ -1031,7 +1071,11 @@ export async function executeParallel<State>(
   }
 
   // Perform linearization check
-  const linearizationResult = await linearize(currentState, branch1Executions, branch2Executions);
+  const linearizationResult = await linearize(
+    currentState,
+    branch1Executions,
+    branch2Executions
+  );
 
   if (!linearizationResult.success) {
     return {

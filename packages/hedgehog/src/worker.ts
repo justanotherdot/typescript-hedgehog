@@ -30,7 +30,10 @@ export interface WorkerLikePoolConfig {
  */
 export function defaultWorkerLikePoolConfig(): WorkerLikePoolConfig {
   return {
-    maxWorkers: Math.max(1, Math.floor((globalThis.navigator?.hardwareConcurrency || 4) / 2)),
+    maxWorkers: Math.max(
+      1,
+      Math.floor((globalThis.navigator?.hardwareConcurrency || 4) / 2)
+    ),
     testTimeout: 30000, // 30 seconds
     maxPendingTests: 100,
     healthCheckTimeout: 5000, // 5 seconds
@@ -117,8 +120,10 @@ export interface PoolHealthStatus {
 // Worker detection and creation
 function determineWorkerType(): 'node' | 'web' {
   // Check Node.js environment first
-  if (typeof globalThis.process !== 'undefined' &&
-      globalThis.process.versions?.node) {
+  if (
+    typeof globalThis.process !== 'undefined' &&
+    globalThis.process.versions?.node
+  ) {
     return 'node';
   }
 
@@ -166,7 +171,9 @@ export class WorkerLikePool {
     const workerCount = this.config.maxWorkers;
 
     if (this.config.enableLogging) {
-      console.log(`Initializing worker pool with ${workerCount} ${workerType} workers`);
+      console.log(
+        `Initializing worker pool with ${workerCount} ${workerType} workers`
+      );
     }
 
     // Create all workers concurrently for faster startup
@@ -218,12 +225,16 @@ export class WorkerLikePool {
     }
 
     if (this.isShuttingDown) {
-      throw new Error('Worker pool is shutting down. Cannot execute new tests.');
+      throw new Error(
+        'Worker pool is shutting down. Cannot execute new tests.'
+      );
     }
 
     // Check resource limits
     if (this.pendingTests.size >= this.config.maxPendingTests) {
-      throw new Error(`Too many pending tests (${this.pendingTests.size}). Maximum allowed: ${this.config.maxPendingTests}`);
+      throw new Error(
+        `Too many pending tests (${this.pendingTests.size}). Maximum allowed: ${this.config.maxPendingTests}`
+      );
     }
 
     // Find an available worker
@@ -265,15 +276,20 @@ export class WorkerLikePool {
   ): Promise<TestExecutionResult<TResult>> {
     return new Promise<TestExecutionResult<TResult>>((resolve, reject) => {
       const timeoutId = setTimeout(() => {
-        reject(new Error(`Test execution timed out after ${this.config.testTimeout}ms`));
+        reject(
+          new Error(
+            `Test execution timed out after ${this.config.testTimeout}ms`
+          )
+        );
       }, this.config.testTimeout);
 
-      worker.executeTest(testId, input, testFunction)
-        .then(result => {
+      worker
+        .executeTest(testId, input, testFunction)
+        .then((result) => {
           clearTimeout(timeoutId);
           resolve(result);
         })
-        .catch(error => {
+        .catch((error) => {
           clearTimeout(timeoutId);
           reject(error);
         });
@@ -284,15 +300,17 @@ export class WorkerLikePool {
    * Find an available worker using round-robin distribution for load balancing.
    */
   private getAvailableWorker(): WorkerLike | null {
-    const availableWorkers = Array.from(this.workers.values())
-      .filter(worker => !worker.isTerminated());
+    const availableWorkers = Array.from(this.workers.values()).filter(
+      (worker) => !worker.isTerminated()
+    );
 
     if (availableWorkers.length === 0) {
       return null;
     }
 
     // Use dedicated round-robin counter to ensure distribution
-    const selectedWorker = availableWorkers[this.roundRobinCounter % availableWorkers.length];
+    const selectedWorker =
+      availableWorkers[this.roundRobinCounter % availableWorkers.length];
     this.roundRobinCounter++;
     return selectedWorker;
   }
@@ -317,14 +335,15 @@ export class WorkerLikePool {
     }
 
     // Check all workers concurrently with timeout
-    const healthCheckPromises = Array.from(this.workers.values()).map(worker =>
-      this.checkWorkerHealth(worker)
+    const healthCheckPromises = Array.from(this.workers.values()).map(
+      (worker) => this.checkWorkerHealth(worker)
     );
 
     await Promise.allSettled(healthCheckPromises);
 
-    const healthyWorkers = Array.from(this.workers.values())
-      .filter(worker => !worker.isTerminated()).length;
+    const healthyWorkers = Array.from(this.workers.values()).filter(
+      (worker) => !worker.isTerminated()
+    ).length;
 
     const status: PoolHealthStatus = {
       totalWorkers: this.workers.size,
@@ -334,7 +353,9 @@ export class WorkerLikePool {
     };
 
     if (this.config.enableLogging) {
-      console.log(`Health check complete: ${healthyWorkers}/${this.workers.size} workers healthy, ${this.pendingTests.size} pending tests`);
+      console.log(
+        `Health check complete: ${healthyWorkers}/${this.workers.size} workers healthy, ${this.pendingTests.size} pending tests`
+      );
     }
 
     return status;
@@ -362,7 +383,9 @@ export class WorkerLikePool {
     if (!worker) return;
 
     if (this.config.enableLogging) {
-      console.log(`Worker ${workerId} marked as unhealthy, scheduling replacement`);
+      console.log(
+        `Worker ${workerId} marked as unhealthy, scheduling replacement`
+      );
     }
 
     // Remove the unhealthy worker
@@ -375,7 +398,10 @@ export class WorkerLikePool {
   /**
    * Replace an unhealthy worker with a new one.
    */
-  private async replaceWorker(workerId: string, oldWorker: WorkerLike): Promise<void> {
+  private async replaceWorker(
+    workerId: string,
+    oldWorker: WorkerLike
+  ): Promise<void> {
     if (this.isShuttingDown) {
       return;
     }
@@ -393,7 +419,9 @@ export class WorkerLikePool {
       await this.createWorker(workerType);
 
       if (this.config.enableLogging) {
-        console.log(`Replaced worker ${workerId} with new ${workerType} worker`);
+        console.log(
+          `Replaced worker ${workerId} with new ${workerType} worker`
+        );
       }
     } catch (error) {
       if (this.config.enableLogging) {
@@ -418,8 +446,6 @@ export class WorkerLikePool {
     };
   }
 
-
-
   /**
    * Shutdown the worker pool and clean up all resources.
    */
@@ -435,7 +461,7 @@ export class WorkerLikePool {
     }
 
     // Terminate all workers (which will reject their internal pending tests)
-    const terminatePromises = Array.from(this.workers.values()).map(worker =>
+    const terminatePromises = Array.from(this.workers.values()).map((worker) =>
       worker.terminate().catch(() => {
         // Ignore individual termination errors during shutdown
       })
@@ -458,7 +484,12 @@ export class WorkerLikePool {
  * Message types for worker communication protocol.
  */
 export type WorkerMessage =
-  | { type: 'execute-test'; testId: string; input: any; serializedFunction: any }
+  | {
+      type: 'execute-test';
+      testId: string;
+      input: any;
+      serializedFunction: any;
+    }
   | { type: 'health-check'; healthCheckId: string }
   | { type: 'result'; testId: string; result: any; timing: number }
   | { type: 'error'; testId: string; error: string }

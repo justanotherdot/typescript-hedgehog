@@ -11,6 +11,8 @@ import {
   TestResult,
   TestCase,
   TestStats,
+  FailResult,
+  GaveUpResult,
   passResult,
   failResult,
   gaveUpResult,
@@ -27,7 +29,8 @@ export class Property<T> {
   constructor(
     private readonly generator: Gen<T>,
     private readonly predicate: (value: T) => boolean,
-    private readonly labels: Array<(value: T) => string | null> = []
+    private readonly labels: Array<(value: T) => string | null> = [],
+    private readonly variableName?: string
   ) {}
 
   /**
@@ -35,10 +38,12 @@ export class Property<T> {
    */
   classify(label: string, condition: (value: T) => boolean): Property<T> {
     const labelFn = (value: T) => (condition(value) ? label : null);
-    return new Property(this.generator, this.predicate, [
-      ...this.labels,
-      labelFn,
-    ]);
+    return new Property(
+      this.generator,
+      this.predicate,
+      [...this.labels, labelFn],
+      this.variableName
+    );
   }
 
   /**
@@ -46,10 +51,12 @@ export class Property<T> {
    */
   collect(labelFn: (value: T) => string): Property<T> {
     const collectFn = (value: T) => labelFn(value);
-    return new Property(this.generator, this.predicate, [
-      ...this.labels,
-      collectFn,
-    ]);
+    return new Property(
+      this.generator,
+      this.predicate,
+      [...this.labels, collectFn],
+      this.variableName
+    );
   }
 
   /**
@@ -67,6 +74,19 @@ export class Property<T> {
       seed
     );
   }
+
+  /**
+   * Check this property, throwing on failure with formatted output.
+   */
+  check(config: Config = Config.default(), seed: Seed = Seed.random()): void {
+    const result = this.run(config, seed);
+
+    if (result.type === 'fail') {
+      throw new Error(formatFailure(result, this.variableName));
+    } else if (result.type === 'gave-up') {
+      throw new Error(formatGaveUp(result));
+    }
+  }
 }
 
 /**
@@ -77,6 +97,18 @@ export function forAll<T>(
   predicate: (value: T) => boolean
 ): Property<T> {
   return new Property(generator, predicate);
+}
+
+/**
+ * Create a named property from a generator and predicate.
+ * The variable name will be shown in failure reports.
+ */
+export function forAllNamed<T>(
+  variableName: string,
+  generator: Gen<T>,
+  predicate: (value: T) => boolean
+): Property<T> {
+  return new Property(generator, predicate, [], variableName);
 }
 
 /**
@@ -156,6 +188,84 @@ function runProperty<T>(
 
   // All tests passed
   return passResult(stats);
+}
+
+/**
+ * Format a failing test result for display.
+ */
+function formatFailure<T>(
+  result: FailResult<T>,
+  variableName?: string
+): string {
+  const lines = ['Property failed:'];
+
+  lines.push('');
+  lines.push(`Counterexample (after ${result.stats.shrinkSteps} shrinks):`);
+  const counterexampleStr = variableName
+    ? `forAll 0 = ${formatValue(result.counterexample.value)} -- ${variableName}`
+    : formatValue(result.counterexample.value);
+  lines.push(`  ${counterexampleStr}`);
+
+  if (result.stats.shrinkSteps > 0) {
+    lines.push('');
+    lines.push('Original failure:');
+    const originalStr = variableName
+      ? `forAll 0 = ${formatValue(result.originalFailure.value)} -- ${variableName}`
+      : formatValue(result.originalFailure.value);
+    lines.push(`  ${originalStr}`);
+  }
+
+  lines.push('');
+  lines.push('Reproduce with:');
+  lines.push(`  seed: ${result.counterexample.seed.toString()}`);
+  lines.push(`  size: ${result.counterexample.size.get()}`);
+
+  if (result.stats.testsRun > 0) {
+    lines.push('');
+    lines.push(`Passed ${result.stats.testsRun} tests before failing`);
+  }
+
+  if (result.stats.labels.size > 0) {
+    lines.push('');
+    lines.push('Classification:');
+    for (const [label, count] of result.stats.labels.entries()) {
+      const percentage = ((count / result.stats.testsRun) * 100).toFixed(1);
+      lines.push(`  ${label}: ${count} (${percentage}%)`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format a gave-up test result for display.
+ */
+function formatGaveUp(result: GaveUpResult): string {
+  const lines = ['Property gave up:'];
+  lines.push('');
+  lines.push(result.reason);
+  lines.push('');
+  lines.push(`Tests run: ${result.stats.testsRun}`);
+  lines.push(`Tests discarded: ${result.stats.testsDiscarded}`);
+  return lines.join('\n');
+}
+
+/**
+ * Format a value for display.
+ */
+function formatValue<T>(value: T): string {
+  if (typeof value === 'string') {
+    return JSON.stringify(value);
+  } else if (Array.isArray(value)) {
+    if (value.length > 10) {
+      const preview = value.slice(0, 10).map(formatValue).join(', ');
+      return `[${preview}, ... (${value.length} items total)]`;
+    }
+    return `[${value.map(formatValue).join(', ')}]`;
+  } else if (value && typeof value === 'object') {
+    return JSON.stringify(value, null, 2);
+  }
+  return String(value);
 }
 
 /**
