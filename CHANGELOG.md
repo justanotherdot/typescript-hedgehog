@@ -8,6 +8,9 @@
 - Formatted classification statistics in failure output
 - `forAllNamed()` function for variable name tracking in failure reports
 - Variable names shown in counterexample output (e.g., `forAll 0 = 42 -- x`)
+- `Property.withExample()` method to add single regression test case
+- `Property.withExamples()` method to add multiple regression test cases at once
+- Examples tested before random generation, useful for known edge cases and manual regression testing
 
 ### Removed
 - Noisy duplicate key warning from state machine testing

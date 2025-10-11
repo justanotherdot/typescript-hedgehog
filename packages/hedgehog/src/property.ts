@@ -30,7 +30,8 @@ export class Property<T> {
     private readonly generator: Gen<T>,
     private readonly predicate: (value: T) => boolean,
     private readonly labels: Array<(value: T) => string | null> = [],
-    private readonly variableName?: string
+    private readonly variableName?: string,
+    private readonly examples: T[] = []
   ) {}
 
   /**
@@ -42,7 +43,8 @@ export class Property<T> {
       this.generator,
       this.predicate,
       [...this.labels, labelFn],
-      this.variableName
+      this.variableName,
+      this.examples
     );
   }
 
@@ -55,7 +57,34 @@ export class Property<T> {
       this.generator,
       this.predicate,
       [...this.labels, collectFn],
-      this.variableName
+      this.variableName,
+      this.examples
+    );
+  }
+
+  /**
+   * Add a single example to test before random generation.
+   */
+  withExample(example: T): Property<T> {
+    return new Property(
+      this.generator,
+      this.predicate,
+      this.labels,
+      this.variableName,
+      [...this.examples, example]
+    );
+  }
+
+  /**
+   * Add multiple examples to test before random generation.
+   */
+  withExamples(examples: T[]): Property<T> {
+    return new Property(
+      this.generator,
+      this.predicate,
+      this.labels,
+      this.variableName,
+      [...this.examples, ...examples]
     );
   }
 
@@ -71,7 +100,8 @@ export class Property<T> {
       this.predicate,
       this.labels,
       config,
-      seed
+      seed,
+      this.examples
     );
   }
 
@@ -119,11 +149,42 @@ function runProperty<T>(
   predicate: (value: T) => boolean,
   labels: Array<(value: T) => string | null>,
   config: Config,
-  seed: Seed
+  seed: Seed,
+  examples: T[] = []
 ): TestResult<T> {
   let stats = emptyStats();
   let currentSeed = seed;
   let discardCount = 0;
+
+  // Test examples first
+  for (let exampleIndex = 0; exampleIndex < examples.length; exampleIndex++) {
+    const example = examples[exampleIndex];
+
+    // Split seed for this example
+    const [exampleSeed, nextSeed] = currentSeed.split();
+    currentSeed = nextSeed;
+
+    const exampleTestCase: TestCase<T> = {
+      value: example,
+      size: Size.of(0),
+      seed: exampleSeed,
+    };
+
+    // Test the example
+    if (!predicate(example)) {
+      // Example failed - no shrinking for examples
+      return failResult(stats, exampleTestCase, exampleTestCase, []);
+    }
+
+    // Update stats with labels
+    for (const labelFn of labels) {
+      const label = labelFn(example);
+      if (label) {
+        stats = addLabel(stats, label);
+      }
+    }
+    stats = addTest(stats);
+  }
 
   // Main test loop
   for (let testNum = 0; testNum < config.testLimit; testNum++) {
