@@ -161,3 +161,105 @@ describe('Variable name tracking', () => {
     }
   });
 });
+
+describe('Examples', () => {
+  test('withExample adds single example to test', () => {
+    const prop = forAll(Ints.range(0, 100), (x) => x !== 42).withExample(42);
+
+    try {
+      prop.check(Config.default(), Seed.fromNumber(1));
+      throw new Error('Expected property to fail');
+    } catch (error) {
+      const message = (error as Error).message;
+      expect(message).toContain('Property failed');
+    }
+  });
+
+  test('withExample can be chained multiple times', () => {
+    const testedValues = new Set<number>();
+    const prop = forAll(Ints.range(0, 100), (x) => {
+      testedValues.add(x);
+      return x < 40 || x > 60;
+    })
+      .withExample(42)
+      .withExample(50)
+      .withExample(55);
+
+    try {
+      prop.check(Config.default().withTests(0), Seed.fromNumber(1));
+      throw new Error('Expected property to fail');
+    } catch (error) {
+      const message = (error as Error).message;
+      // Should fail on first example (42) and stop
+      expect(testedValues.has(42)).toBe(true);
+      expect(message).toContain('Property failed');
+    }
+  });
+
+  test('withExamples adds multiple examples at once', () => {
+    const prop = forAll(
+      Ints.range(0, 100),
+      (x) => x !== 42 && x !== 50
+    ).withExamples([42, 50]);
+
+    try {
+      prop.check(Config.default(), Seed.fromNumber(1));
+      throw new Error('Expected property to fail');
+    } catch (error) {
+      const message = (error as Error).message;
+      expect(message).toContain('Property failed');
+    }
+  });
+
+  test('examples tested before random generation', () => {
+    let exampleTested = false;
+    const prop = forAll(Ints.range(0, 100), (x) => {
+      if (x === 99) exampleTested = true;
+      return true;
+    }).withExample(99);
+
+    prop.check(Config.default().withTests(0), Seed.fromNumber(1));
+    expect(exampleTested).toBe(true);
+  });
+
+  test('passing examples count toward test statistics', () => {
+    const prop = forAll(Ints.range(0, 100), (x) => x >= 0).withExamples([
+      1, 2, 3, 4, 5,
+    ]);
+
+    const result = prop.run(Config.default().withTests(10), Seed.fromNumber(1));
+    expect(result.type).toBe('pass');
+    if (result.type === 'pass') {
+      // 5 examples + 10 random tests
+      expect(result.stats.testsRun).toBe(15);
+    }
+  });
+
+  test('examples work with classify', () => {
+    const prop = forAll(Ints.range(0, 100), (x) => x >= 0)
+      .classify('small', (x) => x < 25)
+      .withExample(10)
+      .withExample(50);
+
+    const result = prop.run(Config.default().withTests(0), Seed.fromNumber(1));
+    expect(result.type).toBe('pass');
+    if (result.type === 'pass') {
+      expect(result.stats.labels.has('small')).toBe(true);
+      expect(result.stats.labels.get('small')).toBe(1); // only 10 is small
+    }
+  });
+
+  test('examples preserved through classify chain', () => {
+    const prop = forAll(Ints.range(0, 100), (x) => x !== 42)
+      .withExample(42)
+      .classify('even', (x) => x % 2 === 0);
+
+    try {
+      prop.check(Config.default(), Seed.fromNumber(1));
+      throw new Error('Expected property to fail');
+    } catch (error) {
+      const message = (error as Error).message;
+      expect(message).toContain('Property failed');
+    }
+  });
+});
